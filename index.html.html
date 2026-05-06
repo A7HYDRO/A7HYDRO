@@ -217,30 +217,6 @@
 
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
-  @keyframes fadeInLogin { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
-
-  /* LOGIN */
-  #login-screen {
-    position: fixed; inset: 0; z-index: 9999;
-    background: linear-gradient(135deg, #060912 0%, #0a1428 50%, #0d1a3a 100%);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .login-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--accent);
-    border-radius: 16px;
-    padding: 40px 36px;
-    width: 100%; max-width: 400px;
-    box-shadow: 0 24px 80px rgba(0,0,0,.6), 0 0 40px rgba(245,194,0,.08);
-    animation: fadeInLogin .5s ease;
-  }
-  .login-logo { font-family:'Syne',sans-serif; font-weight:800; font-size:28px; letter-spacing:-1px; text-align:center; margin-bottom:4px; }
-  .login-logo span { color: var(--accent); }
-  .login-sub { text-align:center; color:var(--text2); font-size:13px; margin-bottom:32px; }
-  .login-error { background:#2d1515; border:1px solid #4a2020; color:#fca5a5; border-radius:7px; padding:10px 14px; font-size:13px; margin-bottom:14px; display:none; text-align:center; }
-  .login-footer { margin-top:16px; text-align:center; font-size:11px; color:var(--text3); }
-  #app { display:none; flex-direction:column; flex:1; }
 
   /* SECTION HEADER */
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
@@ -296,32 +272,10 @@
 </head>
 <body>
 
-<!-- ===== ÉCRAN DE CONNEXION ===== -->
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">A7<span>·</span>HYDRO</div>
-    <div class="login-sub">Gestion de Maintenance — Accès sécurisé</div>
-    <div class="login-error" id="login-error">❌ Identifiant ou mot de passe incorrect</div>
-    <label>Identifiant</label>
-    <input type="text" id="login-user" placeholder="Votre identifiant" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-    <label>Mot de passe</label>
-    <input type="password" id="login-pass" placeholder="Votre mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;justify-content:center;font-size:15px;padding:13px;margin-top:4px;">
-      🔐 Se connecter
-    </button>
-    <div class="login-footer">A7HYDRO · Système de gestion interne</div>
-  </div>
-</div>
-
-<!-- ===== APPLICATION ===== -->
-<div id="app">
-
 <header>
   <div class="logo">A7<span>·</span>HYDRO <span class="badge">BTS</span></div>
   <div style="display:flex;gap:10px;align-items:center;">
     <span class="mono" style="color:var(--text2);font-size:12px;" id="dateDisplay"></span>
-    <span id="header-user" style="color:var(--accent);font-size:12px;font-family:'DM Mono',monospace;"></span>
-    <button class="btn btn-secondary btn-sm" onclick="doLogout()">🔓 Déconnexion</button>
   </div>
 </header>
 
@@ -1131,59 +1085,10 @@ function notify(msg) {
 }
 
 // ============================================================
-//  COMPTES UTILISATEURS
-//  ➜ Pour ajouter/modifier un compte : cherche "COMPTES" dans le fichier
-//  ➜ Format : { user: 'identifiant', pass: 'motdepasse', nom: 'Prénom Nom' }
+//  INIT
 // ============================================================
-const COMPTES = [
-  { user: 'atelier', pass: 'a7hydro26140!', nom: 'Atelier' }
-];
-
-function doLogin() {
-  const u = document.getElementById('login-user').value.trim().toLowerCase();
-  const p = document.getElementById('login-pass').value;
-  const compte = COMPTES.find(c => c.user === u && c.pass === p);
-  if (!compte) {
-    const err = document.getElementById('login-error');
-    err.style.display = 'block';
-    document.getElementById('login-pass').value = '';
-    setTimeout(() => err.style.display = 'none', 3000);
-    return;
-  }
-  sessionStorage.setItem('a7_session', JSON.stringify({ user: compte.user, nom: compte.nom }));
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('app').style.flexDirection = 'column';
-  document.getElementById('header-user').textContent = '👤 ' + compte.nom;
-  setDate();
-  renderDashboard();
-  renderHistorique();
-}
-
-function doLogout() {
-  if (!confirm('Se déconnecter ?')) return;
-  sessionStorage.removeItem('a7_session');
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-user').value = '';
-  document.getElementById('login-pass').value = '';
-}
-
-// Vérifier si déjà connecté (session active)
-(function checkSession() {
-  const s = sessionStorage.getItem('a7_session');
-  if (s) {
-    const compte = JSON.parse(s);
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    document.getElementById('app').style.flexDirection = 'column';
-    document.getElementById('header-user').textContent = '👤 ' + compte.nom;
-    setDate();
-    renderDashboard();
-    renderHistorique();
-  }
-})();
+renderDashboard();
+renderHistorique();
 </script>
-</div><!-- fin #app -->
 </body>
 </html>
