@@ -2406,107 +2406,114 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// Collections VGP et leurs labels
+var VGP_COLLECTIONS = [
+  { col: 'vgp_rapports', label: 'GRUE' },
+  { col: 'vgp_hayon',    label: 'HAYON' },
+  { col: 'vgp_chariot',  label: 'CHARIOT' },
+  { col: 'vgp_bras',     label: 'BRAS DE LEVAGE' }
+];
+
+function getAllVGPAlertes(callback) {
+  var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
+  var alertes = [];
+  var done = 0;
+  VGP_COLLECTIONS.forEach(function(vc) {
+    db.collection(vc.col).get().then(function(snap) {
+      snap.docs.forEach(function(doc) {
+        var d = doc.data();
+        if (!d.date) return;
+        var exp = new Date(d.date);
+        exp.setMonth(exp.getMonth() + 6);
+        var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
+        if (jours <= 15) {
+          alertes.push({
+            fbId: doc.id,
+            col: vc.col,
+            type: vc.label,
+            entreprise: d.entreprise || '—',
+            immat: d.immat || d.parc || '—',
+            marque: d.marque || '—',
+            modele: d.modele || '',
+            date: d.date,
+            jours: jours,
+            expire: jours < 0,
+            ignored: ignored.indexOf(vc.col+'_'+doc.id) !== -1
+          });
+        }
+      });
+      done++;
+      if (done === VGP_COLLECTIONS.length) callback(alertes);
+    }).catch(function(){ done++; if(done===VGP_COLLECTIONS.length) callback(alertes); });
+  });
+}
+
 function loadNotifs() {
   var list = document.getElementById('notif-list');
   var badge = document.getElementById('notif-badge');
   if (!list) return;
 
-  // Récupérer les alertes ignorées
-  var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
+  getAllVGPAlertes(function(alertes) {
+    var visibles = alertes.filter(function(a){ return !a.ignored; });
+    visibles.sort(function(a,b){ return a.jours-b.jours; });
 
-  db.collection('vgp_rapports').get().then(function(snap) {
-    var alertes = [];
-    snap.docs.forEach(function(doc) {
-      var d = doc.data();
-      if (!d.date) return;
-      if (ignored.indexOf(doc.id) !== -1) return;
-      var exp = new Date(d.date);
-      exp.setMonth(exp.getMonth() + 6);
-      var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
-      if (jours <= 15) {
-        alertes.push({
-          fbId: doc.id,
-          entreprise: d.entreprise || '—',
-          immat: d.immat || d.parc || '—',
-          marque: d.marque || '—',
-          modele: d.modele || '',
-          date: d.date,
-          jours: jours,
-          expire: jours < 0
-        });
-      }
-    });
-
-    // Mettre à jour le badge
-    if (alertes.length > 0) {
+    if (visibles.length > 0) {
       badge.style.display = 'flex';
-      badge.textContent = alertes.length;
+      badge.textContent = visibles.length;
     } else {
       badge.style.display = 'none';
     }
 
-    if (!alertes.length) {
-      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">✅ Aucune alerte VGP</div>';
+    if (!visibles.length) {
+      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">✅ Aucune alerte VGP en cours</div>';
       return;
     }
 
-    alertes.sort(function(a,b){return a.jours-b.jours;});
-    list.innerHTML = alertes.map(function(a) {
-      return '<div id="notif-item-'+a.fbId+'" style="background:'+(a.expire?'#2d1515':'#1a1200')+';border:1px solid '+(a.expire?'#4a2020':'#3d2e00')+';border-radius:8px;padding:12px;margin-bottom:8px;">'+
+    list.innerHTML = visibles.map(function(a) {
+      var uid = a.col+'_'+a.fbId;
+      return '<div id="notif-item-'+uid+'" style="background:'+(a.expire?'#2d1515':'#1a1200')+';border:1px solid '+(a.expire?'#4a2020':'#3d2e00')+';border-radius:8px;padding:12px;margin-bottom:8px;">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
         '<div style="flex:1;">'+
-        '<div style="font-weight:700;font-size:12px;color:'+(a.expire?'#fca5a5':'#f5c200')+';margin-bottom:4px;">'+(a.expire?'⚠️ VGP EXPIRÉE':'⏰ VGP À RENOUVELER')+'</div>'+
+        '<div style="font-weight:700;font-size:11px;color:'+(a.expire?'#fca5a5':'#f5c200')+';margin-bottom:3px;">'+(a.expire?'⚠️ VGP '+a.type+' EXPIRÉE':'⏰ VGP '+a.type+' À RENOUVELER')+'</div>'+
         '<div style="font-size:13px;font-weight:600;">'+a.entreprise+'</div>'+
         '<div style="font-size:12px;color:var(--text2);margin-top:2px;">🚗 '+a.immat+' · '+a.marque+' '+a.modele+'</div>'+
         '<div style="font-size:11px;color:var(--text3);margin-top:2px;">VGP du '+formatDate(a.date)+' · '+(a.expire?'<strong style="color:var(--danger);">EXPIRÉE</strong>':'expire dans <strong style="color:#f5c200;">'+a.jours+' jours</strong>')+'</div>'+
         '</div>'+
-        '<div style="font-family:\'DM Mono\',monospace;font-size:20px;font-weight:700;color:'+(a.expire?'var(--danger)':'#f5c200')+';">'+
-        (a.expire?'EXP':'+'+a.jours+'j')+
+        '<div style="font-family:\'DM Mono\',monospace;font-size:20px;font-weight:700;color:'+(a.expire?'var(--danger)':'#f5c200')+';">'+(a.expire?'EXP':'+'+a.jours+'j')+'</div>'+
         '</div>'+
-        '</div>'+
-        '<button onclick="dismissNotif(\''+a.fbId+'\')" class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;justify-content:center;">✓ Marquer comme traité</button>'+
+        '<button onclick="dismissNotif(\''+uid+'\')" class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;justify-content:center;">✓ Marquer comme traité</button>'+
         '</div>';
     }).join('');
   });
 }
 
-function dismissNotif(fbId) {
+function dismissNotif(uid) {
   var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
-  if (ignored.indexOf(fbId) === -1) ignored.push(fbId);
+  if (ignored.indexOf(uid) === -1) ignored.push(uid);
   localStorage.setItem('vgp_notifs_ignored', JSON.stringify(ignored));
-  var item = document.getElementById('notif-item-'+fbId);
-  if (item) item.style.opacity = '0.3';
+  var item = document.getElementById('notif-item-'+uid);
+  if (item) { item.style.opacity = '0.3'; item.style.pointerEvents = 'none'; }
   setTimeout(function(){ loadNotifs(); }, 300);
   notify('Alerte marquée comme traitée');
 }
 
 function clearAllNotifs() {
   if (!confirm('Effacer toutes les alertes ?')) return;
-  var badge = document.getElementById('notif-badge');
-  db.collection('vgp_rapports').get().then(function(snap) {
-    var ids = snap.docs.map(function(d){return d.id;});
-    localStorage.setItem('vgp_notifs_ignored', JSON.stringify(ids));
-    badge.style.display = 'none';
+  getAllVGPAlertes(function(alertes) {
+    var uids = alertes.map(function(a){ return a.col+'_'+a.fbId; });
+    localStorage.setItem('vgp_notifs_ignored', JSON.stringify(uids));
+    var badge = document.getElementById('notif-badge');
+    if (badge) badge.style.display = 'none';
     loadNotifs();
     notify('Toutes les alertes effacées');
   });
 }
 
 function updateNotifBadge() {
-  var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
   var badge = document.getElementById('notif-badge');
   if (!badge) return;
-  db.collection('vgp_rapports').get().then(function(snap) {
-    var count = 0;
-    snap.docs.forEach(function(doc) {
-      if (ignored.indexOf(doc.id) !== -1) return;
-      var d = doc.data();
-      if (!d.date) return;
-      var exp = new Date(d.date);
-      exp.setMonth(exp.getMonth() + 6);
-      var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
-      if (jours <= 15) count++;
-    });
+  getAllVGPAlertes(function(alertes) {
+    var count = alertes.filter(function(a){ return !a.ignored; }).length;
     if (count > 0) {
       badge.style.display = 'flex';
       badge.textContent = count;
@@ -2516,48 +2523,27 @@ function updateNotifBadge() {
   });
 }
 
-// ============================================================
-// ALERTES VGP 6 MOIS
-// ============================================================
-function alerteBadgeVGP(dateStr) {
-  if (!dateStr) return '';
-  var exp = new Date(dateStr);
-  exp.setMonth(exp.getMonth() + 6);
-  var now = new Date();
-  var jours = Math.ceil((exp - now) / (1000*60*60*24));
-  if (jours < 0) return ' <span style="background:#2d1515;color:#fca5a5;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">⚠️ EXPIRÉE</span>';
-  if (jours <= 15) return ' <span style="background:#2a1f00;color:#f5c200;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">⏰ '+jours+'J RESTANTS</span>';
-  return ' <span style="background:#0a1e12;color:#86efac;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">✅ '+jours+'j</span>';
-}
-
 function checkAlertesVGP() {
   var alertDiv = document.getElementById('dash-alertes-vgp');
   if (!alertDiv) return;
-  db.collection('vgp_rapports').get().then(function(snap) {
-    var alertes = [];
-    snap.docs.forEach(function(doc) {
-      var d = doc.data();
-      if (!d.date) return;
-      var exp = new Date(d.date);
-      exp.setMonth(exp.getMonth() + 6);
-      var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
-      if (jours <= 15) alertes.push({ entreprise:d.entreprise||'—', immat:d.immat||d.parc||'—', marque:d.marque||'—', modele:d.modele||'', date:d.date, jours:jours });
-    });
-    if (!alertes.length) {
+  alertDiv.innerHTML = '<div style="color:var(--text3);font-size:13px;">Chargement...</div>';
+  getAllVGPAlertes(function(alertes) {
+    var visibles = alertes.filter(function(a){ return !a.ignored; });
+    visibles.sort(function(a,b){ return a.jours-b.jours; });
+    if (!visibles.length) {
       alertDiv.innerHTML = '<div style="color:var(--success);font-size:13px;padding:8px 0;">✅ Aucune VGP à renouveler prochainement.</div>';
       return;
     }
-    alertes.sort(function(a,b){return a.jours-b.jours;});
-    alertDiv.innerHTML = alertes.map(function(a) {
+    alertDiv.innerHTML = visibles.map(function(a) {
       var expire = a.jours < 0;
       return '<div style="background:'+(expire?'#2d1515':'#2a1f00')+';border:1px solid '+(expire?'#4a2020':'#3d2e00')+';border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
         '<div>'+
-        '<div style="font-weight:700;font-size:13px;color:'+(expire?'#fca5a5':'#f5c200')+';margin-bottom:4px;">'+(expire?'⚠️ VGP GRUE EXPIRÉE':'⏰ VGP GRUE À RENOUVELER')+'</div>'+
+        '<div style="font-weight:700;font-size:12px;color:'+(expire?'#fca5a5':'#f5c200')+';margin-bottom:3px;">'+(expire?'⚠️ VGP '+a.type+' EXPIRÉE':'⏰ VGP '+a.type+' À RENOUVELER')+'</div>'+
         '<div style="font-size:13px;"><strong>'+a.entreprise+'</strong> · '+a.marque+' '+a.modele+'</div>'+
-        '<div style="font-size:12px;color:var(--text2);margin-top:2px;">🚗 Immat/Parc : <strong style="color:var(--accent);">'+a.immat+'</strong> · VGP du '+formatDate(a.date)+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px;">🚗 <strong style="color:var(--accent);">'+a.immat+'</strong> · VGP du '+formatDate(a.date)+'</div>'+
         '</div>'+
         '<div style="font-family:\'DM Mono\',monospace;font-size:22px;font-weight:700;color:'+(expire?'var(--danger)':'#f5c200')+';text-align:center;">'+
-        (expire?'EXPIRÉE':'<span style="font-size:12px;display:block;color:var(--text2);">expire dans</span>'+Math.abs(a.jours)+'j')+
+        (expire?'EXPIRÉE':'<span style="font-size:12px;display:block;color:var(--text2);">dans</span>'+Math.abs(a.jours)+'j')+
         '</div>'+
         '</div>';
     }).join('');
