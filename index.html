@@ -137,6 +137,22 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div style="display:flex;gap:10px;align-items:center;">
     <span class="mono" style="color:var(--text2);font-size:12px;" id="dateDisplay"></span>
     <span id="header-user" style="color:var(--accent);font-size:12px;font-family:'DM Mono',monospace;"></span>
+    <div style="position:relative;">
+      <button onclick="toggleNotifs()" style="background:none;border:none;cursor:pointer;font-size:22px;position:relative;padding:4px 8px;" title="Alertes VGP">
+        🔔
+        <span id="notif-badge" style="display:none;position:absolute;top:0;right:2px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;width:16px;height:16px;border-radius:50%;display:none;align-items:center;justify-content:center;font-family:'DM Mono',monospace;">0</span>
+      </button>
+      <div id="notif-panel" style="display:none;position:absolute;right:0;top:44px;width:360px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;">🔔 Alertes VGP</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="clearAllNotifs()" class="btn btn-secondary btn-sm">🗑 Tout effacer</button>
+            <button onclick="toggleNotifs()" class="btn btn-secondary btn-sm">✕</button>
+          </div>
+        </div>
+        <div id="notif-list" style="max-height:400px;overflow-y:auto;padding:10px;"></div>
+      </div>
+    </div>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()">🔓 Déconnexion</button>
   </div>
 </header>
@@ -150,6 +166,8 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div class="tab" onclick="showTab('ia')" id="tab-ia">🤖 Assistant IA</div>
   <div class="tab" onclick="showTab('vgp')" id="tab-vgp">📋 VGP GRUE</div>
   <div class="tab" onclick="showTab('vgp-hayon')" id="tab-vgp-hayon">📋 VGP HAYON</div>
+  <div class="tab" onclick="showTab('vgp-chariot')" id="tab-vgp-chariot">📋 VGP CHARIOT</div>
+  <div class="tab" onclick="showTab('vgp-bras')" id="tab-vgp-bras">📋 VGP BRAS</div>
 </nav>
 <main>
 
@@ -164,6 +182,10 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div class="grid2">
     <div class="card"><div class="card-title"><div class="dot"></div>Dernières interventions</div><div id="dash-recent"><div class="empty"><div class="empty-icon">📭</div><p>Aucune intervention</p></div></div></div>
     <div class="card"><div class="card-title"><div class="dot"></div>Pannes les plus fréquentes</div><div id="dash-pannes"><div class="empty"><div class="empty-icon">📈</div><p>Données insuffisantes</p></div></div></div>
+  </div>
+  <div class="card" style="border-color:#3d2e00;">
+    <div class="card-title"><div class="dot" style="background:#f5c200;"></div>⏰ Alertes VGP Grue — Renouvellements</div>
+    <div id="dash-alertes-vgp"><div style="color:var(--text3);font-size:13px;">Chargement...</div></div>
   </div>
 </div>
 
@@ -318,6 +340,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
       <div><label>Modèle</label><input type="text" id="vgp-modele" placeholder="Modèle"></div>
       <div><label>N° de série</label><input type="text" id="vgp-serie" placeholder="Numéro de série"></div>
       <div><label>N° de parc</label><input type="text" id="vgp-parc" placeholder="Numéro de parc"></div>
+      <div><label>Immatriculation</label><input type="text" id="vgp-immat" placeholder="Ex : AB-123-CD"></div>
       <div><label>Nombre d'heures</label><input type="text" id="vgp-heures" placeholder="Heures"></div>
       <div><label>Équipements</label><input type="text" id="vgp-equipements" placeholder="Équipements"></div>
     </div>
@@ -487,6 +510,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
       <div><label>Modèle</label><input type="text" id="hayon-modele" placeholder="Modèle"></div>
       <div><label>N° de série</label><input type="text" id="hayon-serie" placeholder="N° série"></div>
       <div><label>N° de parc</label><input type="text" id="hayon-parc" placeholder="N° parc"></div>
+      <div><label>Immatriculation</label><input type="text" id="hayon-immat" placeholder="Ex : AB-123-CD"></div>
       <div><label>Nombre d'heures</label><input type="text" id="hayon-heures" placeholder="Heures"></div>
       <div><label>Équipements</label><input type="text" id="hayon-equipements" placeholder="Équipements"></div>
     </div>
@@ -584,6 +608,268 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div id="hayon-hist-list">
     <div class="empty"><div class="empty-icon">📂</div><p>Aucun rapport VGP Hayon sauvegardé.</p></div>
   </div>
+</div>
+
+<!-- VGP CHARIOT -->
+<div class="panel" id="panel-vgp-chariot">
+  <div class="section-header">
+    <div class="section-title">📋 VGP CHARIOT — Rapport de vérification</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" onclick="resetVGPChariot()">🔄 Réinitialiser</button>
+      <button class="btn btn-secondary btn-sm" onclick="showTab('vgp-chariot-historique')" style="border-color:var(--accent2);color:var(--accent2);">📂 Historique</button>
+      <button class="btn btn-primary" onclick="saveAndPrintVGPChariot()">💾 Sauvegarder & PDF</button>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:var(--accent);background:linear-gradient(135deg,#0f1629 0%,#1a1200 100%);">
+    <div class="card-title"><div class="dot"></div>🏢 Entreprise cliente</div>
+    <label>Nom de l'entreprise</label>
+    <input type="text" id="chariot-entreprise" placeholder="Ex : Transports Dupont..." style="font-size:15px;font-weight:600;">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Matériel concerné</div>
+    <div class="grid2">
+      <div><label>Marque</label><input type="text" id="chariot-marque" placeholder="Marque"></div>
+      <div><label>Modèle</label><input type="text" id="chariot-modele" placeholder="Modèle"></div>
+      <div><label>N° de série</label><input type="text" id="chariot-serie" placeholder="N° série"></div>
+      <div><label>N° de parc</label><input type="text" id="chariot-parc" placeholder="N° parc"></div>
+      <div><label>Immatriculation</label><input type="text" id="chariot-immat" placeholder="Ex : AB-123-CD"></div>
+      <div><label>Nombre d'heures</label><input type="text" id="chariot-heures" placeholder="Heures"></div>
+      <div><label>Équipements</label><input type="text" id="chariot-equipements" placeholder="Équipements"></div>
+    </div>
+    <label>Type de vérification réalisé</label>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;"><input type="checkbox" id="chariot-type-vgp" style="width:auto;margin-bottom:0;"> VGP</label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;"><input type="checkbox" id="chariot-type-mes" style="width:auto;margin-bottom:0;"> Mise en service</label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;"><input type="checkbox" id="chariot-type-res" style="width:auto;margin-bottom:0;"> Remise en service</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Condition de réalisation du contrôle</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead>
+        <tbody id="chariot-condition-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Examen de l'état de conservation</div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">CHASSIS</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-chassis-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">TRANSMISSION</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-transmission-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">GROUPE DE PUISSANCE</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-puissance-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">ORGANES DE COMMANDE</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-commande-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">TRAIN PORTEUR</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-train-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">ÉQUIPEMENTS</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-equipement-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">POSTE DE CONDUITE</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-poste-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">ÉCLAIRAGE ET SIGNALISATION</div>
+    <div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-eclairage-tbody"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Essais de fonctionnement (VGP, RES et MES)</div>
+    <label>Charge manipulée lors de l'essai</label><input type="text" id="chariot-charge-essai" placeholder="Ex : 2000 kg">
+    <div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-essais-tbody"></tbody></table></div>
+    <label style="margin-top:14px;">Conditions de déclenchement des limiteurs de charge</label>
+    <input type="text" id="chariot-limiteurs" placeholder="Décrire les conditions">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Épreuve statique (RES et MES sans aptitude à l'emploi)</div>
+    <div class="grid2">
+      <div><label>Charge mise en œuvre</label><input type="text" id="chariot-charge-statique" placeholder="Ex : 2500 kg"></div>
+      <div><label>Durée de l'épreuve</label><input type="text" id="chariot-duree-statique" placeholder="Ex : 10 min"></div>
+    </div>
+    <div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="chariot-statique-tbody"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Épreuve dynamique (RES et MES sans aptitude à l'emploi)</div>
+    <label>Charge manipulée lors de l'épreuve</label>
+    <input type="text" id="chariot-charge-dynamique" placeholder="Ex : 2200 kg">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Observation(s)</div>
+    <button class="mic-btn" id="mic-chariot-obs" onclick="startVoice('chariot-obs','mic-chariot-obs')">🎤 Dicter les observations</button>
+    <textarea id="chariot-obs" placeholder="Saisir les observations..." style="min-height:140px;"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Visa</div>
+    <div class="grid2">
+      <div><label>Contrôle réalisé par (nom)</label><input type="text" id="chariot-verificateur" placeholder="Nom et prénom"></div>
+      <div><label>Accompagnant (nom)</label><input type="text" id="chariot-accompagnant" placeholder="Nom et prénom"></div>
+      <div><label>Date de vérification</label><input type="date" id="chariot-date"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>✍ Signature</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Signez avec votre souris ou votre doigt</p>
+    <canvas id="chariot-signature" style="width:100%;height:150px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
+    <div style="margin-top:10px;"><button class="btn btn-secondary btn-sm" onclick="clearSignatureChariot()">🗑 Effacer</button></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveAndPrintVGPChariot()" style="width:100%;justify-content:center;font-size:15px;padding:14px;margin-bottom:20px;">💾 Sauvegarder & Générer le rapport PDF</button>
+</div>
+
+<!-- HISTORIQUE VGP CHARIOT -->
+<div class="panel" id="panel-vgp-chariot-historique">
+  <div class="section-header">
+    <div class="section-title">📂 Historique des VGP Chariot</div>
+    <button class="btn btn-secondary btn-sm" onclick="showTab('vgp-chariot')">← Retour VGP Chariot</button>
+  </div>
+  <div class="card">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="chariot-hist-search" placeholder="Rechercher par nom d'entreprise..." oninput="renderChariotHistorique()" style="margin-bottom:0;font-size:15px;padding:13px 13px 13px 40px;">
+    </div>
+  </div>
+  <div id="chariot-hist-list">
+    <div class="empty"><div class="empty-icon">📂</div><p>Aucun rapport VGP Chariot sauvegardé.</p></div>
+  </div>
+</div>
+
+<!-- VGP BRAS DE LEVAGE -->
+<div class="panel" id="panel-vgp-bras">
+  <div class="section-header">
+    <div class="section-title">📋 VGP BRAS DE LEVAGE — Rapport de vérification</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" onclick="resetVGPBras()">🔄 Réinitialiser</button>
+      <button class="btn btn-secondary btn-sm" onclick="showTab('vgp-bras-historique')" style="border-color:var(--accent2);color:var(--accent2);">📂 Historique</button>
+      <button class="btn btn-primary" onclick="saveAndPrintVGPBras()">💾 Sauvegarder & PDF</button>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:var(--accent);background:linear-gradient(135deg,#0f1629 0%,#1a1200 100%);">
+    <div class="card-title"><div class="dot"></div>🏢 Entreprise cliente</div>
+    <label>Nom de l'entreprise</label>
+    <input type="text" id="bras-entreprise" placeholder="Ex : Transports Dupont..." style="font-size:15px;font-weight:600;">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Matériel concerné</div>
+    <div class="grid2">
+      <div><label>Marque</label><input type="text" id="bras-marque" placeholder="Marque"></div>
+      <div><label>Modèle</label><input type="text" id="bras-modele" placeholder="Modèle"></div>
+      <div><label>N° de série</label><input type="text" id="bras-serie" placeholder="N° série"></div>
+      <div><label>N° de parc</label><input type="text" id="bras-parc" placeholder="N° parc"></div>
+      <div><label>Immatriculation</label><input type="text" id="bras-immat" placeholder="Ex : AB-123-CD"></div>
+      <div><label>Nombre d'heures</label><input type="text" id="bras-heures" placeholder="Heures"></div>
+      <div><label>Équipements</label><input type="text" id="bras-equipements" placeholder="Équipements"></div>
+    </div>
+    <label>Type de vérification réalisé</label>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;"><input type="checkbox" id="bras-type-vgp" style="width:auto;margin-bottom:0;"> VGP</label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;"><input type="checkbox" id="bras-type-mes" style="width:auto;margin-bottom:0;"> Mise en service</label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;cursor:pointer;"><input type="checkbox" id="bras-type-res" style="width:auto;margin-bottom:0;"> Remise en service</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Condition de réalisation du contrôle</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead>
+        <tbody id="bras-condition-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Examen de l'état de conservation</div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">ORGANES DE COMMANDE</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="bras-commande-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">SYSTÈME DE VERROUILLAGE</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="bras-verrouillage-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">PLAQUES ET SIGNALITIQUE</div>
+    <div style="overflow-x:auto;margin-bottom:16px;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="bras-plaques-tbody"></tbody></table></div>
+
+    <div style="font-weight:700;font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">BRAS ET SYSTÈME DE GUIDAGE</div>
+    <div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="bras-bras-tbody"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Essais de fonctionnement (VGP, RES et MES)</div>
+    <label>Charge manipulée lors de l'essai</label><input type="text" id="bras-charge-essai" placeholder="Ex : 500 kg">
+    <div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="bras-essais-tbody"></tbody></table></div>
+    <label style="margin-top:14px;">Conditions de déclenchement des limiteurs de charge</label>
+    <input type="text" id="bras-limiteurs" placeholder="Décrire les conditions">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Épreuve statique (RES et MES sans aptitude à l'emploi)</div>
+    <div class="grid2">
+      <div><label>Charge mise en œuvre</label><input type="text" id="bras-charge-statique" placeholder="Ex : 750 kg"></div>
+      <div><label>Durée de l'épreuve</label><input type="text" id="bras-duree-statique" placeholder="Ex : 10 min"></div>
+    </div>
+    <div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Élément</th><th style="text-align:center;width:50px;">C</th><th style="text-align:center;width:50px;">NC</th></tr></thead><tbody id="bras-statique-tbody"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Épreuve dynamique (RES et MES sans aptitude à l'emploi)</div>
+    <label>Charge manipulée lors de l'épreuve</label>
+    <input type="text" id="bras-charge-dynamique" placeholder="Ex : 600 kg">
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Observation(s)</div>
+    <button class="mic-btn" id="mic-bras-obs" onclick="startVoice('bras-obs','mic-bras-obs')">🎤 Dicter les observations</button>
+    <textarea id="bras-obs" placeholder="Saisir les observations..." style="min-height:140px;"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>Visa</div>
+    <div class="grid2">
+      <div><label>Contrôle réalisé par (nom)</label><input type="text" id="bras-verificateur" placeholder="Nom et prénom"></div>
+      <div><label>Accompagnant (nom)</label><input type="text" id="bras-accompagnant" placeholder="Nom et prénom"></div>
+      <div><label>Date de vérification</label><input type="date" id="bras-date"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>✍ Signature</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px;">Signez avec votre souris ou votre doigt</p>
+    <canvas id="bras-signature" style="width:100%;height:150px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
+    <div style="margin-top:10px;"><button class="btn btn-secondary btn-sm" onclick="clearSignatureBras()">🗑 Effacer</button></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveAndPrintVGPBras()" style="width:100%;justify-content:center;font-size:15px;padding:14px;margin-bottom:20px;">💾 Sauvegarder & Générer le rapport PDF</button>
+</div>
+
+<!-- HISTORIQUE VGP BRAS -->
+<div class="panel" id="panel-vgp-bras-historique">
+  <div class="section-header">
+    <div class="section-title">📂 Historique des VGP Bras de levage</div>
+    <button class="btn btn-secondary btn-sm" onclick="showTab('vgp-bras')">← Retour</button>
+  </div>
+  <div class="card">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="bras-hist-search" placeholder="Rechercher par nom d'entreprise..." oninput="renderBrasHistorique()" style="margin-bottom:0;font-size:15px;padding:13px 13px 13px 40px;">
+    </div>
+  </div>
+  <div id="bras-hist-list"><div class="empty"><div class="empty-icon">📂</div><p>Aucun rapport VGP Bras sauvegardé.</p></div></div>
 </div>
 
 </main>
@@ -711,6 +997,7 @@ function lancerApp(compte) {
     wrap.innerHTML = '<label>Technicien</label><input type="text" id="int-tech" value="'+compte.nom+'" readonly style="margin-bottom:14px;opacity:.7;cursor:not-allowed;">';
   }
   startListeners();
+  setTimeout(function(){ updateNotifBadge(); }, 2000);
 }
 
 // Vérifier session
@@ -754,6 +1041,10 @@ function showTab(name) {
   if (name==='vgp-historique') { renderVGPHistorique(); }
   if (name==='vgp-hayon') { setTimeout(function(){ initVGPHayon(); }, 100); }
   if (name==='vgp-hayon-historique') { renderHayonHistorique(); }
+  if (name==='vgp-chariot') { setTimeout(function(){ initVGPChariot(); }, 100); }
+  if (name==='vgp-chariot-historique') { renderChariotHistorique(); }
+  if (name==='vgp-bras') { setTimeout(function(){ initVGPBras(); }, 100); }
+  if (name==='vgp-bras-historique') { renderBrasHistorique(); }
   if (name==='knowledge') { document.getElementById('kb-search').value=''; document.getElementById('kb-results').innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Tapez des mots-clés pour chercher</p></div>'; }
 }
 
@@ -820,6 +1111,7 @@ function renderDashboard() {
   document.getElementById('stat-month').textContent=thisMonth.length;
   document.getElementById('stat-pieces').textContent=interventions.reduce(function(s,i){return s+(i.pieces||[]).reduce(function(a,p){return a+p.qty;},0);},0);
   document.getElementById('stat-kb').textContent=interventions.length;
+  checkAlertesVGP();
   var rec=document.getElementById('dash-recent');
   if(!interventions.length){rec.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>Aucune intervention</p></div>';}
   else rec.innerHTML=interventions.slice(0,5).map(function(i){return '<div style="padding:10px 0;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">'+i.machine+'</span><span class="pill '+pillPrio(i.prio)+'">'+i.prio+'</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px;">'+formatDate(i.date)+' · '+i.tech+'</div>'+(i.symptomes?'<div style="font-size:12px;color:var(--text3);margin-top:2px;">'+i.symptomes.substring(0,80)+(i.symptomes.length>80?'...':'')+'</div>':'')+'</div>';}).join('');
@@ -1098,7 +1390,7 @@ function initVGP() {
 
 function resetVGP() {
   if (!confirm('Réinitialiser le formulaire VGP ?')) return;
-  ['vgp-marque','vgp-modele','vgp-serie','vgp-parc','vgp-heures','vgp-equipements',
+  ['vgp-marque','vgp-modele','vgp-serie','vgp-parc','vgp-immat','vgp-heures','vgp-equipements',
    'vgp-verificateur','vgp-charge-essai','vgp-limiteurs','vgp-charge-statique',
    'vgp-duree-statique','vgp-charge-dynamique','vgp-obs'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
@@ -1169,6 +1461,7 @@ function saveAndPrintVGP() {
     modele: document.getElementById('vgp-modele').value,
     serie: document.getElementById('vgp-serie').value,
     parc: document.getElementById('vgp-parc').value,
+    immat: document.getElementById('vgp-immat').value,
     heures: document.getElementById('vgp-heures').value,
     equipements: document.getElementById('vgp-equipements').value,
     typeVGP: document.getElementById('vgp-type-vgp').checked,
@@ -1218,8 +1511,8 @@ function renderVGPHistorique() {
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'+
         '<div>'+
         '<div style="font-family:\'Syne\',sans-serif;font-weight:800;font-size:16px;color:var(--accent);">🏢 '+d.entreprise+'</div>'+
-        '<div style="font-size:13px;margin-top:4px;"><strong>'+(d.marque||'—')+' '+(d.modele||'')+'</strong> · N° série : '+(d.serie||'—')+'</div>'+
-        '<div style="font-size:12px;color:var(--text2);margin-top:3px;">📅 '+formatDate(d.date)+' · 👨‍🔧 '+(d.verificateur||'—')+' · <span class="tag">'+(types.join(' / ')||'—')+'</span></div>'+
+        '<div style="font-size:13px;margin-top:4px;"><strong>'+(d.marque||'—')+' '+(d.modele||'')+'</strong>'+(d.immat?' · 🚗 <span style="color:#f5c200;font-family:\'DM Mono\',monospace;">'+d.immat+'</span>':'')+(d.parc?' · Parc : '+d.parc:'')+(d.serie?' · N°série : '+d.serie:'')+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:3px;">📅 '+formatDate(d.date)+' · 👨‍🔧 '+(d.verificateur||'—')+' · <span class="tag">'+(types.join(' / ')||'—')+'</span>'+alerteBadgeVGP(d.date)+'</div>'+
         '</div>'+
         '<div style="display:flex;gap:8px;">'+
         '<button class="btn btn-info btn-sm" onclick="reimprimerVGP(\''+d._fbId+'\')">🖨 Réimprimer</button>'+
@@ -1439,7 +1732,7 @@ function clearSignatureHayon() {
 
 function resetVGPHayon() {
   if (!confirm('Réinitialiser le formulaire VGP Hayon ?')) return;
-  ['hayon-marque','hayon-modele','hayon-serie','hayon-parc','hayon-heures','hayon-equipements',
+  ['hayon-marque','hayon-modele','hayon-serie','hayon-parc','hayon-immat','hayon-heures','hayon-equipements',
    'hayon-verificateur','hayon-accompagnant','hayon-charge-essai','hayon-limiteurs',
    'hayon-charge-statique','hayon-duree-statique','hayon-charge-dynamique','hayon-obs','hayon-entreprise'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
@@ -1470,6 +1763,7 @@ function saveAndPrintVGPHayon() {
     modele: document.getElementById('hayon-modele').value,
     serie: document.getElementById('hayon-serie').value,
     parc: document.getElementById('hayon-parc').value,
+    immat: document.getElementById('hayon-immat').value,
     heures: document.getElementById('hayon-heures').value,
     equipements: document.getElementById('hayon-equipements').value,
     typeVGP: document.getElementById('hayon-type-vgp').checked,
@@ -1515,8 +1809,8 @@ function renderHayonHistorique() {
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'+
         '<div>'+
         '<div style="font-family:\'Syne\',sans-serif;font-weight:800;font-size:16px;color:var(--accent);">🏢 '+d.entreprise+'</div>'+
-        '<div style="font-size:13px;margin-top:4px;"><strong>'+(d.marque||'—')+' '+(d.modele||'')+'</strong> · N° série : '+(d.serie||'—')+'</div>'+
-        '<div style="font-size:12px;color:var(--text2);margin-top:3px;">📅 '+formatDate(d.date)+' · 👨‍🔧 '+(d.verificateur||'—')+' · <span class="tag">'+(types.join(' / ')||'—')+'</span></div>'+
+        '<div style="font-size:13px;margin-top:4px;"><strong>'+(d.marque||'—')+' '+(d.modele||'')+'</strong>'+(d.immat?' · 🚗 <span style="color:#f5c200;font-family:\'DM Mono\',monospace;">'+d.immat+'</span>':'')+(d.parc?' · Parc : '+d.parc:'')+(d.serie?' · N°série : '+d.serie:'')+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:3px;">📅 '+formatDate(d.date)+' · 👨‍🔧 '+(d.verificateur||'—')+' · <span class="tag">'+(types.join(' / ')||'—')+'</span>'+alerteBadgeVGP(d.date)+'</div>'+
         '</div>'+
         '<div style="display:flex;gap:8px;">'+
         '<button class="btn btn-info btn-sm" onclick="reimprimerHayon(\''+d._fbId+'\')">🖨 Réimprimer</button>'+
@@ -1604,7 +1898,673 @@ function printVGPHayon(d) {
   win.document.close();
 }
 
+
 // ============================================================
+// VGP CHARIOT
+// ============================================================
+var chariotData = {
+  conditions: [
+    "L'appareil est accessible en toute sécurité",
+    "L'état de propreté permet la vérification",
+    "Présence du carnet de maintenance et/ou registre de sécurité",
+    "Examen d'adéquation réalisé",
+    "Présence de la déclaration de conformité CE",
+    "Le personnel approprié pour la conduite est mis à disposition",
+    "Les moyens adéquats (charges, ...) sont disponibles"
+  ],
+  chassis: ["Mécanosoudures / Boulonnerie","Articulations","Marche pieds","Points d'arrimage (manutentions)","Structure de protection","Fixation contrepoids"],
+  transmission: ["Freins – système d'arrêt","Cardans","Niveaux d'huile","Système de commande de direction"],
+  puissance: ["Protections (physique, phoniques...)","Moteur / Courroies","Protections parties tournantes","Niveaux : huile / refroidissement","Filtration air","Échappement","Radiateur(s)","Liaison / Raccordements, Hydrau / Pneum","Réservoirs / Bouteille de gaz / Cuve GPL"],
+  commande: ["Contacteur de démarrage","Frein de service","Frein de parking","Arrêt moteur","Autres commandes"],
+  train: ["Pneumatiques","Jantes","Direction"],
+  equipement: ["Mécanosoudures / Boulonnerie","Articulations Axes Bagues","Vérins","Liaison / Raccordements, Hydrau / Pneum","Tablier à déplacement latéral (TDL)","Galets / glissière de mat","Protection","Fourches","Chaînes"],
+  poste: ["Siege et fixations","Ceinture de sécurité","Identification des commandes","Tableau de bord"],
+  eclairage: ["Éclairage routier et de travail","Avertisseur(s)","Gyrophare","Pictogrammes de sécurité","Affichage de la capacité","Plaque constructeur (marquage CE...)"],
+  essais: ["Fonctionnement des dispositifs de maintien de charge","Fonctionnement des dispositifs contrôlant la descente des charges","Fonctionnement dispositifs limitant les mouvements"],
+  statique: ["Absence de déformation apparente","Absence de défauts"]
+};
+
+var chariotSigCanvas, chariotSigCtx, chariotSigDrawing = false;
+
+function initVGPChariot() {
+  var sections = [
+    {id:'chariot-condition-tbody', data:chariotData.conditions},
+    {id:'chariot-chassis-tbody', data:chariotData.chassis},
+    {id:'chariot-transmission-tbody', data:chariotData.transmission},
+    {id:'chariot-puissance-tbody', data:chariotData.puissance},
+    {id:'chariot-commande-tbody', data:chariotData.commande},
+    {id:'chariot-train-tbody', data:chariotData.train},
+    {id:'chariot-equipement-tbody', data:chariotData.equipement},
+    {id:'chariot-poste-tbody', data:chariotData.poste},
+    {id:'chariot-eclairage-tbody', data:chariotData.eclairage},
+    {id:'chariot-essais-tbody', data:chariotData.essais},
+    {id:'chariot-statique-tbody', data:chariotData.statique}
+  ];
+  sections.forEach(function(s) {
+    var tbody = document.getElementById(s.id);
+    if (!tbody) return;
+    tbody.innerHTML = s.data.map(function(item, i) {
+      var name = s.id + '_' + i;
+      return '<tr><td style="font-size:13px;padding:8px 12px;">'+item+'</td>'+
+        '<td style="text-align:center;padding:8px;"><input type="radio" name="'+name+'" value="C" style="width:auto;margin:0;accent-color:var(--success);transform:scale(1.3);"></td>'+
+        '<td style="text-align:center;padding:8px;"><input type="radio" name="'+name+'" value="NC" style="width:auto;margin:0;accent-color:var(--danger);transform:scale(1.3);"></td></tr>';
+    }).join('');
+  });
+  var d = new Date();
+  var vd = document.getElementById('chariot-date');
+  if (vd) vd.value = d.toISOString().split('T')[0];
+  initSignatureChariot();
+}
+
+function initSignatureChariot() {
+  chariotSigCanvas = document.getElementById('chariot-signature');
+  if (!chariotSigCanvas) return;
+  chariotSigCtx = chariotSigCanvas.getContext('2d');
+  chariotSigCanvas.width = chariotSigCanvas.offsetWidth;
+  chariotSigCanvas.height = 150;
+  chariotSigCtx.strokeStyle = '#f5c200';
+  chariotSigCtx.lineWidth = 2;
+  chariotSigCtx.lineCap = 'round';
+  chariotSigCanvas.addEventListener('mousedown', function(e){chariotSigDrawing=true;var r=chariotSigCanvas.getBoundingClientRect();chariotSigCtx._lx=e.clientX-r.left;chariotSigCtx._ly=e.clientY-r.top;});
+  chariotSigCanvas.addEventListener('mousemove', function(e){if(!chariotSigDrawing)return;var r=chariotSigCanvas.getBoundingClientRect();chariotSigCtx.beginPath();chariotSigCtx.moveTo(chariotSigCtx._lx,chariotSigCtx._ly);chariotSigCtx._lx=e.clientX-r.left;chariotSigCtx._ly=e.clientY-r.top;chariotSigCtx.lineTo(chariotSigCtx._lx,chariotSigCtx._ly);chariotSigCtx.stroke();});
+  chariotSigCanvas.addEventListener('mouseup',function(){chariotSigDrawing=false;});
+  chariotSigCanvas.addEventListener('mouseleave',function(){chariotSigDrawing=false;});
+  chariotSigCanvas.addEventListener('touchstart',function(e){e.preventDefault();var t=e.touches[0];var r=chariotSigCanvas.getBoundingClientRect();chariotSigDrawing=true;chariotSigCtx._lx=t.clientX-r.left;chariotSigCtx._ly=t.clientY-r.top;});
+  chariotSigCanvas.addEventListener('touchmove',function(e){e.preventDefault();if(!chariotSigDrawing)return;var t=e.touches[0];var r=chariotSigCanvas.getBoundingClientRect();chariotSigCtx.beginPath();chariotSigCtx.moveTo(chariotSigCtx._lx,chariotSigCtx._ly);chariotSigCtx._lx=t.clientX-r.left;chariotSigCtx._ly=t.clientY-r.top;chariotSigCtx.lineTo(chariotSigCtx._lx,chariotSigCtx._ly);chariotSigCtx.stroke();});
+  chariotSigCanvas.addEventListener('touchend',function(){chariotSigDrawing=false;});
+}
+
+function clearSignatureChariot(){
+  if(chariotSigCtx) chariotSigCtx.clearRect(0,0,chariotSigCanvas.width,chariotSigCanvas.height);
+}
+
+function resetVGPChariot(){
+  if(!confirm('Réinitialiser le formulaire VGP Chariot ?')) return;
+  ['chariot-marque','chariot-modele','chariot-serie','chariot-parc','chariot-immat','chariot-heures',
+   'chariot-equipements','chariot-verificateur','chariot-accompagnant','chariot-charge-essai',
+   'chariot-limiteurs','chariot-charge-statique','chariot-duree-statique','chariot-charge-dynamique',
+   'chariot-obs','chariot-entreprise'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['chariot-type-vgp','chariot-type-mes','chariot-type-res'].forEach(function(id){var el=document.getElementById(id);if(el)el.checked=false;});
+  document.querySelectorAll('#panel-vgp-chariot input[type="radio"]').forEach(function(r){r.checked=false;});
+  clearSignatureChariot();
+  var d=new Date(); var vd=document.getElementById('chariot-date'); if(vd) vd.value=d.toISOString().split('T')[0];
+  notify('Formulaire réinitialisé');
+}
+
+function saveAndPrintVGPChariot(){
+  var entreprise = document.getElementById('chariot-entreprise').value.trim();
+  if(!entreprise){alert('Veuillez saisir le nom de l\'entreprise.');return;}
+  var radios={};
+  document.querySelectorAll('#panel-vgp-chariot input[type="radio"]:checked').forEach(function(r){radios[r.name]=r.value;});
+  var record={
+    id:Date.now(),
+    date:document.getElementById('chariot-date').value||new Date().toISOString().split('T')[0],
+    entreprise:entreprise,
+    marque:document.getElementById('chariot-marque').value,
+    modele:document.getElementById('chariot-modele').value,
+    serie:document.getElementById('chariot-serie').value,
+    parc:document.getElementById('chariot-parc').value,
+    immat:document.getElementById('chariot-immat').value,
+    heures:document.getElementById('chariot-heures').value,
+    equipements:document.getElementById('chariot-equipements').value,
+    typeVGP:document.getElementById('chariot-type-vgp').checked,
+    typeMES:document.getElementById('chariot-type-mes').checked,
+    typeRES:document.getElementById('chariot-type-res').checked,
+    chargeEssai:document.getElementById('chariot-charge-essai').value,
+    limiteurs:document.getElementById('chariot-limiteurs').value,
+    chargeStatique:document.getElementById('chariot-charge-statique').value,
+    dureeStatique:document.getElementById('chariot-duree-statique').value,
+    chargeDynamique:document.getElementById('chariot-charge-dynamique').value,
+    obs:document.getElementById('chariot-obs').value,
+    verificateur:document.getElementById('chariot-verificateur').value,
+    accompagnant:document.getElementById('chariot-accompagnant').value,
+    signature:chariotSigCanvas?chariotSigCanvas.toDataURL():'',
+    radios:radios
+  };
+  db.collection('vgp_chariot').add(record)
+    .then(function(){notify('VGP Chariot sauvegardée !');printVGPChariot(record);})
+    .catch(function(e){alert('Erreur : '+e.message);});
+}
+
+function renderChariotHistorique(){
+  var searchEl=document.getElementById('chariot-hist-search');
+  var search=searchEl?searchEl.value.toLowerCase().trim():'';
+  var list=document.getElementById('chariot-hist-list');
+  if(!list) return;
+  list.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><p>Chargement...</p></div>';
+  db.collection('vgp_chariot').orderBy('id','desc').get().then(function(snap){
+    var docs=snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});});
+    if(search) docs=docs.filter(function(d){return d.entreprise&&d.entreprise.toLowerCase().includes(search);});
+    if(!docs.length){
+      list.innerHTML='<div class="empty"><div class="empty-icon">📂</div><p>'+(search?'Aucune VGP pour "'+search+'"':'Aucun rapport VGP Chariot sauvegardé')+'.</p></div>';
+      return;
+    }
+    list.innerHTML=docs.map(function(d){
+      var types=[];
+      if(d.typeVGP)types.push('VGP');
+      if(d.typeMES)types.push('MES');
+      if(d.typeRES)types.push('RES');
+      return '<div class="card" style="margin-bottom:12px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'+
+        '<div>'+
+        '<div style="font-family:\'Syne\',sans-serif;font-weight:800;font-size:16px;color:var(--accent);">🏢 '+d.entreprise+'</div>'+
+        '<div style="font-size:13px;margin-top:4px;"><strong>'+(d.marque||'—')+' '+(d.modele||'')+'</strong>'+(d.immat?' · 🚗 <span style="color:var(--accent);font-family:\'DM Mono\',monospace;">'+d.immat+'</span>':'')+(d.parc?' · Parc : '+d.parc:'')+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:3px;">📅 '+formatDate(d.date)+' · 👨‍🔧 '+(d.verificateur||'—')+' · <span class="tag">'+(types.join(' / ')||'—')+'</span>'+alerteBadgeVGP(d.date)+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;">'+
+        '<button class="btn btn-info btn-sm" onclick="reimprimerChariot(\''+d._fbId+'\')">🖨 Réimprimer</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteChariot(\''+d._fbId+'\')">🗑</button>'+
+        '</div></div>'+
+        (d.obs?'<div style="margin-top:10px;font-size:12px;color:var(--text2);background:var(--surface2);border-radius:6px;padding:8px 12px;">📝 '+d.obs.substring(0,120)+(d.obs.length>120?'...':'')+'</div>':'')+
+        '</div>';
+    }).join('');
+  }).catch(function(){list.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Erreur.</p></div>';});
+}
+
+function deleteChariot(fbId){
+  if(!confirm('Supprimer ce rapport VGP Chariot ?')) return;
+  db.collection('vgp_chariot').doc(fbId).delete().then(function(){notify('Supprimé');renderChariotHistorique();});
+}
+
+function reimprimerChariot(fbId){
+  db.collection('vgp_chariot').doc(fbId).get().then(function(doc){
+    if(!doc.exists) return;
+    printVGPChariot(doc.data());
+  });
+}
+
+function printVGPChariot(d){
+  var types=[];
+  if(d.typeVGP)types.push('VGP');
+  if(d.typeMES)types.push('Mise en service');
+  if(d.typeRES)types.push('Remise en service');
+  function getR(name){return(d.radios&&d.radios[name])?d.radios[name]:'—';}
+  function makeRows(data,prefix){
+    return data.map(function(item,i){
+      var v=getR(prefix+'_'+i);
+      return '<tr><td>'+item+'</td><td style="text-align:center;font-weight:700;color:'+(v==='C'?'green':v==='NC'?'red':'#999')+';">'+v+'</td></tr>';
+    }).join('');
+  }
+  var logoEl=document.querySelector('img[src^="data:image"]');
+  var logoSrc=logoEl?logoEl.src:'';
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VGP Chariot — '+(d.entreprise||'')+'</title>'+
+  '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:15px;}'+
+  '.header{background:#f5c200;padding:14px 20px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}'+
+  '.header h1{font-size:16px;font-weight:900;}.header h2{font-size:13px;font-weight:600;}'+
+  '.section-title{background:#333;color:#fff;padding:5px 10px;font-weight:700;font-size:11px;text-transform:uppercase;margin:10px 0 5px;}'+
+  '.sub-title{background:#f5c200;color:#000;padding:4px 10px;font-weight:700;font-size:10px;text-transform:uppercase;margin:8px 0 4px;}'+
+  'table{width:100%;border-collapse:collapse;margin-bottom:8px;}'+
+  'th{background:#eee;padding:5px 8px;border:1px solid #ccc;font-size:10px;text-align:left;}'+
+  'td{padding:4px 8px;border:1px solid #ccc;font-size:11px;}'+
+  '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}'+
+  '.field{border:1px solid #ccc;border-radius:4px;padding:6px 8px;}'+
+  '.fl{font-size:9px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:2px;}'+
+  '.fv{font-size:11px;font-weight:600;}'+
+  '.obs{border:1px solid #ccc;border-radius:4px;padding:10px;min-height:80px;font-size:11px;line-height:1.6;margin-bottom:10px;}'+
+  '.sig-box{border:1px solid #ccc;border-radius:4px;padding:6px;text-align:center;}'+
+  '.footer{margin-top:16px;border-top:2px solid #f5c200;padding-top:8px;display:flex;justify-content:space-between;font-size:10px;color:#888;}'+
+  '@media print{body{padding:8px;}@page{margin:10mm;}}</style></head><body>'+
+  '<div class="header"><div style="display:flex;align-items:center;gap:14px;">'+(logoSrc?'<img src="'+logoSrc+'" style="height:55px;border-radius:4px;">':'')+'<div><h2>Rapport de vérification</h2><h1>Chariot élévateur frontal</h1></div></div>'+
+  '<div style="text-align:right;font-size:11px;"><div><strong>Date :</strong> '+formatDate(d.date)+'</div><div><strong>Type :</strong> '+(types.join(', ')||'—')+'</div></div></div>'+
+  '<div class="section-title">Entreprise cliente</div>'+
+  '<div class="field" style="margin-bottom:10px;"><div class="fl">Entreprise</div><div class="fv" style="font-size:14px;color:#d4a800;">'+(d.entreprise||'—')+'</div></div>'+
+  '<div class="grid">'+
+  '<div class="field"><div class="fl">Marque</div><div class="fv">'+(d.marque||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Modèle</div><div class="fv">'+(d.modele||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">N° série</div><div class="fv">'+(d.serie||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">N° parc</div><div class="fv">'+(d.parc||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Immatriculation</div><div class="fv" style="color:#d4a800;font-weight:700;">'+(d.immat||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Nb heures</div><div class="fv">'+(d.heures||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Équipements</div><div class="fv">'+(d.equipements||'—')+'</div></div>'+
+  '</div>'+
+  '<div class="section-title">Condition de réalisation du contrôle</div>'+
+  '<table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.conditions,'chariot-condition-tbody')+'</tbody></table>'+
+  '<div class="section-title">Examen de l\'état de conservation</div>'+
+  '<div class="sub-title">CHASSIS</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.chassis,'chariot-chassis-tbody')+'</tbody></table>'+
+  '<div class="sub-title">TRANSMISSION</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.transmission,'chariot-transmission-tbody')+'</tbody></table>'+
+  '<div class="sub-title">GROUPE DE PUISSANCE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.puissance,'chariot-puissance-tbody')+'</tbody></table>'+
+  '<div class="sub-title">ORGANES DE COMMANDE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.commande,'chariot-commande-tbody')+'</tbody></table>'+
+  '<div class="sub-title">TRAIN PORTEUR</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.train,'chariot-train-tbody')+'</tbody></table>'+
+  '<div class="sub-title">ÉQUIPEMENTS</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.equipement,'chariot-equipement-tbody')+'</tbody></table>'+
+  '<div class="sub-title">POSTE DE CONDUITE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.poste,'chariot-poste-tbody')+'</tbody></table>'+
+  '<div class="sub-title">ÉCLAIRAGE ET SIGNALISATION</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.eclairage,'chariot-eclairage-tbody')+'</tbody></table>'+
+  '<div class="section-title">Essais de fonctionnement</div>'+
+  '<p style="margin-bottom:5px;"><strong>Charge :</strong> '+(d.chargeEssai||'—')+'</p>'+
+  '<table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.essais,'chariot-essais-tbody')+'</tbody></table>'+
+  '<p style="margin-bottom:8px;"><strong>Limiteurs :</strong> '+(d.limiteurs||'—')+'</p>'+
+  '<div class="section-title">Épreuve statique</div>'+
+  '<p><strong>Charge :</strong> '+(d.chargeStatique||'—')+' — <strong>Durée :</strong> '+(d.dureeStatique||'—')+'</p>'+
+  '<table style="margin-top:6px;"><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(chariotData.statique,'chariot-statique-tbody')+'</tbody></table>'+
+  '<div class="section-title">Épreuve dynamique</div>'+
+  '<p><strong>Charge :</strong> '+(d.chargeDynamique||'—')+'</p>'+
+  '<div class="section-title" style="margin-top:10px;">Observation(s)</div>'+
+  '<div class="obs">'+(d.obs||'Aucune observation').replace(/\n/g,'<br>')+'</div>'+
+  '<div class="section-title">Visa / Signature</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">'+
+  '<div class="field"><div class="fl">Contrôle réalisé par</div><div class="fv">'+(d.verificateur||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Accompagnant</div><div class="fv">'+(d.accompagnant||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Date</div><div class="fv">'+(d.date||'—')+'</div></div>'+
+  '</div>'+
+  (d.signature&&d.signature!='data:,'?'<div class="sig-box" style="margin-top:8px;"><div style="font-size:9px;color:#888;margin-bottom:4px;">SIGNATURE</div><img src="'+d.signature+'" style="max-height:80px;"></div>':'<div class="sig-box" style="margin-top:8px;height:80px;display:flex;align-items:center;justify-content:center;color:#aaa;">Signature</div>')+
+  '<div class="footer"><span>A7HYDRO · Rapport de vérification Chariot élévateur frontal</span><span>Imprimé le '+new Date().toLocaleDateString('fr-FR')+'</span></div>'+
+  '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  win.document.close();
+}
+
+// ============================================================
+// VGP BRAS DE LEVAGE
+// ============================================================
+var brasData = {
+  conditions: [
+    "L'appareil est accessible en toute sécurité",
+    "L'état de propreté permet la vérification",
+    "Présence du carnet de maintenance et/ou registre de sécurité",
+    "Examen d'adéquation réalisé",
+    "Présence de la déclaration de conformité CE",
+    "Le personnel approprié pour la conduite est mis à disposition",
+    "Les moyens adéquats (charges, ...) sont disponibles"
+  ],
+  commande: ["Boitier cabine","Commande sur châssis","Arrêt d'urgence","Identification des commandes"],
+  verrouillage: ["Verrouillage de la benne"],
+  plaques: ["Pictogrammes de sécurité","Affichage de la capacité","Plaque constructeur (marquage CE...)"],
+  bras: ["Mécanosoudures","Articulations Axes Bagues","Boulonnerie","Vérin","Liaisons - raccordements","Barre de verrouillage","Crochet de préhension","Verrouillage de la benne","Rouleaux de guidage benne"],
+  essais: ["Fonctionnement des dispositifs de maintien de charge","Fonctionnement des dispositifs contrôlant la descente des charges","Fonctionnement dispositifs limitant les mouvements"],
+  statique: ["Absence de déformation apparente","Absence de défauts"]
+};
+
+var brasSigCanvas, brasSigCtx, brasSigDrawing = false;
+
+function initVGPBras() {
+  var sections = [
+    {id:'bras-condition-tbody', data:brasData.conditions},
+    {id:'bras-commande-tbody', data:brasData.commande},
+    {id:'bras-verrouillage-tbody', data:brasData.verrouillage},
+    {id:'bras-plaques-tbody', data:brasData.plaques},
+    {id:'bras-bras-tbody', data:brasData.bras},
+    {id:'bras-essais-tbody', data:brasData.essais},
+    {id:'bras-statique-tbody', data:brasData.statique}
+  ];
+  sections.forEach(function(s) {
+    var tbody = document.getElementById(s.id);
+    if (!tbody) return;
+    tbody.innerHTML = s.data.map(function(item, i) {
+      var name = s.id + '_' + i;
+      return '<tr><td style="font-size:13px;padding:8px 12px;">'+item+'</td>'+
+        '<td style="text-align:center;padding:8px;"><input type="radio" name="'+name+'" value="C" style="width:auto;margin:0;accent-color:var(--success);transform:scale(1.3);"></td>'+
+        '<td style="text-align:center;padding:8px;"><input type="radio" name="'+name+'" value="NC" style="width:auto;margin:0;accent-color:var(--danger);transform:scale(1.3);"></td></tr>';
+    }).join('');
+  });
+  var d = new Date();
+  var vd = document.getElementById('bras-date');
+  if (vd) vd.value = d.toISOString().split('T')[0];
+  initSignatureBras();
+}
+
+function initSignatureBras() {
+  brasSigCanvas = document.getElementById('bras-signature');
+  if (!brasSigCanvas) return;
+  brasSigCtx = brasSigCanvas.getContext('2d');
+  brasSigCanvas.width = brasSigCanvas.offsetWidth;
+  brasSigCanvas.height = 150;
+  brasSigCtx.strokeStyle = '#f5c200';
+  brasSigCtx.lineWidth = 2;
+  brasSigCtx.lineCap = 'round';
+  brasSigCanvas.addEventListener('mousedown',function(e){brasSigDrawing=true;var r=brasSigCanvas.getBoundingClientRect();brasSigCtx._lx=e.clientX-r.left;brasSigCtx._ly=e.clientY-r.top;});
+  brasSigCanvas.addEventListener('mousemove',function(e){if(!brasSigDrawing)return;var r=brasSigCanvas.getBoundingClientRect();brasSigCtx.beginPath();brasSigCtx.moveTo(brasSigCtx._lx,brasSigCtx._ly);brasSigCtx._lx=e.clientX-r.left;brasSigCtx._ly=e.clientY-r.top;brasSigCtx.lineTo(brasSigCtx._lx,brasSigCtx._ly);brasSigCtx.stroke();});
+  brasSigCanvas.addEventListener('mouseup',function(){brasSigDrawing=false;});
+  brasSigCanvas.addEventListener('mouseleave',function(){brasSigDrawing=false;});
+  brasSigCanvas.addEventListener('touchstart',function(e){e.preventDefault();var t=e.touches[0];var r=brasSigCanvas.getBoundingClientRect();brasSigDrawing=true;brasSigCtx._lx=t.clientX-r.left;brasSigCtx._ly=t.clientY-r.top;});
+  brasSigCanvas.addEventListener('touchmove',function(e){e.preventDefault();if(!brasSigDrawing)return;var t=e.touches[0];var r=brasSigCanvas.getBoundingClientRect();brasSigCtx.beginPath();brasSigCtx.moveTo(brasSigCtx._lx,brasSigCtx._ly);brasSigCtx._lx=t.clientX-r.left;brasSigCtx._ly=t.clientY-r.top;brasSigCtx.lineTo(brasSigCtx._lx,brasSigCtx._ly);brasSigCtx.stroke();});
+  brasSigCanvas.addEventListener('touchend',function(){brasSigDrawing=false;});
+}
+
+function clearSignatureBras(){if(brasSigCtx)brasSigCtx.clearRect(0,0,brasSigCanvas.width,brasSigCanvas.height);}
+
+function resetVGPBras(){
+  if(!confirm('Réinitialiser le formulaire VGP Bras ?')) return;
+  ['bras-marque','bras-modele','bras-serie','bras-parc','bras-immat','bras-heures','bras-equipements',
+   'bras-verificateur','bras-accompagnant','bras-charge-essai','bras-limiteurs',
+   'bras-charge-statique','bras-duree-statique','bras-charge-dynamique','bras-obs','bras-entreprise'
+  ].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['bras-type-vgp','bras-type-mes','bras-type-res'].forEach(function(id){var el=document.getElementById(id);if(el)el.checked=false;});
+  document.querySelectorAll('#panel-vgp-bras input[type="radio"]').forEach(function(r){r.checked=false;});
+  clearSignatureBras();
+  var d=new Date();var vd=document.getElementById('bras-date');if(vd)vd.value=d.toISOString().split('T')[0];
+  notify('Formulaire réinitialisé');
+}
+
+function saveAndPrintVGPBras(){
+  var entreprise=document.getElementById('bras-entreprise').value.trim();
+  if(!entreprise){alert('Veuillez saisir le nom de l\'entreprise.');return;}
+  var radios={};
+  document.querySelectorAll('#panel-vgp-bras input[type="radio"]:checked').forEach(function(r){radios[r.name]=r.value;});
+  var record={
+    id:Date.now(),
+    date:document.getElementById('bras-date').value||new Date().toISOString().split('T')[0],
+    entreprise:entreprise,
+    marque:document.getElementById('bras-marque').value,
+    modele:document.getElementById('bras-modele').value,
+    serie:document.getElementById('bras-serie').value,
+    parc:document.getElementById('bras-parc').value,
+    immat:document.getElementById('bras-immat').value,
+    heures:document.getElementById('bras-heures').value,
+    equipements:document.getElementById('bras-equipements').value,
+    typeVGP:document.getElementById('bras-type-vgp').checked,
+    typeMES:document.getElementById('bras-type-mes').checked,
+    typeRES:document.getElementById('bras-type-res').checked,
+    chargeEssai:document.getElementById('bras-charge-essai').value,
+    limiteurs:document.getElementById('bras-limiteurs').value,
+    chargeStatique:document.getElementById('bras-charge-statique').value,
+    dureeStatique:document.getElementById('bras-duree-statique').value,
+    chargeDynamique:document.getElementById('bras-charge-dynamique').value,
+    obs:document.getElementById('bras-obs').value,
+    verificateur:document.getElementById('bras-verificateur').value,
+    accompagnant:document.getElementById('bras-accompagnant').value,
+    signature:brasSigCanvas?brasSigCanvas.toDataURL():'',
+    radios:radios
+  };
+  db.collection('vgp_bras').add(record)
+    .then(function(){notify('VGP Bras sauvegardée !');printVGPBras(record);})
+    .catch(function(e){alert('Erreur : '+e.message);});
+}
+
+function renderBrasHistorique(){
+  var searchEl=document.getElementById('bras-hist-search');
+  var search=searchEl?searchEl.value.toLowerCase().trim():'';
+  var list=document.getElementById('bras-hist-list');
+  if(!list)return;
+  list.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><p>Chargement...</p></div>';
+  db.collection('vgp_bras').orderBy('id','desc').get().then(function(snap){
+    var docs=snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});});
+    if(search)docs=docs.filter(function(d){return d.entreprise&&d.entreprise.toLowerCase().includes(search);});
+    if(!docs.length){
+      list.innerHTML='<div class="empty"><div class="empty-icon">📂</div><p>'+(search?'Aucune VGP pour "'+search+'"':'Aucun rapport VGP Bras sauvegardé')+'.</p></div>';
+      return;
+    }
+    list.innerHTML=docs.map(function(d){
+      var types=[];
+      if(d.typeVGP)types.push('VGP');if(d.typeMES)types.push('MES');if(d.typeRES)types.push('RES');
+      return '<div class="card" style="margin-bottom:12px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'+
+        '<div>'+
+        '<div style="font-family:\'Syne\',sans-serif;font-weight:800;font-size:16px;color:var(--accent);">🏢 '+d.entreprise+'</div>'+
+        '<div style="font-size:13px;margin-top:4px;"><strong>'+(d.marque||'—')+' '+(d.modele||'')+'</strong>'+(d.immat?' · 🚗 <span style="color:var(--accent);font-family:\'DM Mono\',monospace;">'+d.immat+'</span>':'')+(d.parc?' · Parc : '+d.parc:'')+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:3px;">📅 '+formatDate(d.date)+' · 👨‍🔧 '+(d.verificateur||'—')+' · <span class="tag">'+(types.join(' / ')||'—')+'</span>'+alerteBadgeVGP(d.date)+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;">'+
+        '<button class="btn btn-info btn-sm" onclick="reimprimerBras(\''+d._fbId+'\')">🖨 Réimprimer</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteBras(\''+d._fbId+'\')">🗑</button>'+
+        '</div></div>'+
+        (d.obs?'<div style="margin-top:10px;font-size:12px;color:var(--text2);background:var(--surface2);border-radius:6px;padding:8px 12px;">📝 '+d.obs.substring(0,120)+(d.obs.length>120?'...':'')+'</div>':'')+
+        '</div>';
+    }).join('');
+  }).catch(function(){list.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Erreur.</p></div>';});
+}
+
+function deleteBras(fbId){
+  if(!confirm('Supprimer ce rapport VGP Bras ?'))return;
+  db.collection('vgp_bras').doc(fbId).delete().then(function(){notify('Supprimé');renderBrasHistorique();});
+}
+
+function reimprimerBras(fbId){
+  db.collection('vgp_bras').doc(fbId).get().then(function(doc){
+    if(!doc.exists)return;
+    printVGPBras(doc.data());
+  });
+}
+
+function printVGPBras(d){
+  var types=[];
+  if(d.typeVGP)types.push('VGP');if(d.typeMES)types.push('Mise en service');if(d.typeRES)types.push('Remise en service');
+  function getR(name){return(d.radios&&d.radios[name])?d.radios[name]:'—';}
+  function makeRows(data,prefix){
+    return data.map(function(item,i){
+      var v=getR(prefix+'_'+i);
+      return '<tr><td>'+item+'</td><td style="text-align:center;font-weight:700;color:'+(v==='C'?'green':v==='NC'?'red':'#999')+';">'+v+'</td></tr>';
+    }).join('');
+  }
+  var logoEl=document.querySelector('img[src^="data:image"]');
+  var logoSrc=logoEl?logoEl.src:'';
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VGP Bras — '+(d.entreprise||'')+'</title>'+
+  '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:15px;}'+
+  '.header{background:#f5c200;padding:14px 20px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}'+
+  '.header h1{font-size:16px;font-weight:900;}.header h2{font-size:13px;font-weight:600;}'+
+  '.section-title{background:#333;color:#fff;padding:5px 10px;font-weight:700;font-size:11px;text-transform:uppercase;margin:10px 0 5px;}'+
+  '.sub-title{background:#f5c200;color:#000;padding:4px 10px;font-weight:700;font-size:10px;text-transform:uppercase;margin:8px 0 4px;}'+
+  'table{width:100%;border-collapse:collapse;margin-bottom:8px;}th{background:#eee;padding:5px 8px;border:1px solid #ccc;font-size:10px;text-align:left;}'+
+  'td{padding:4px 8px;border:1px solid #ccc;font-size:11px;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}'+
+  '.field{border:1px solid #ccc;border-radius:4px;padding:6px 8px;}.fl{font-size:9px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:2px;}'+
+  '.fv{font-size:11px;font-weight:600;}.obs{border:1px solid #ccc;border-radius:4px;padding:10px;min-height:80px;font-size:11px;line-height:1.6;margin-bottom:10px;}'+
+  '.sig-box{border:1px solid #ccc;border-radius:4px;padding:6px;text-align:center;}'+
+  '.footer{margin-top:16px;border-top:2px solid #f5c200;padding-top:8px;display:flex;justify-content:space-between;font-size:10px;color:#888;}'+
+  '@media print{body{padding:8px;}@page{margin:10mm;}}</style></head><body>'+
+  '<div class="header"><div style="display:flex;align-items:center;gap:14px;">'+(logoSrc?'<img src="'+logoSrc+'" style="height:55px;border-radius:4px;">':'')+'<div><h2>Rapport de vérification</h2><h1>Bras de levage</h1></div></div>'+
+  '<div style="text-align:right;font-size:11px;"><div><strong>Date :</strong> '+formatDate(d.date)+'</div><div><strong>Type :</strong> '+(types.join(', ')||'—')+'</div></div></div>'+
+  '<div class="section-title">Entreprise cliente</div>'+
+  '<div class="field" style="margin-bottom:10px;"><div class="fl">Entreprise</div><div class="fv" style="font-size:14px;color:#d4a800;">'+(d.entreprise||'—')+'</div></div>'+
+  '<div class="grid">'+
+  '<div class="field"><div class="fl">Marque</div><div class="fv">'+(d.marque||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Modèle</div><div class="fv">'+(d.modele||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">N° série</div><div class="fv">'+(d.serie||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">N° parc</div><div class="fv">'+(d.parc||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Immatriculation</div><div class="fv" style="color:#d4a800;font-weight:700;">'+(d.immat||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Nb heures</div><div class="fv">'+(d.heures||'—')+'</div></div>'+
+  '</div>'+
+  '<div class="section-title">Condition de réalisation du contrôle</div>'+
+  '<table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.conditions,'bras-condition-tbody')+'</tbody></table>'+
+  '<div class="section-title">Examen de l\'état de conservation</div>'+
+  '<div class="sub-title">ORGANES DE COMMANDE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.commande,'bras-commande-tbody')+'</tbody></table>'+
+  '<div class="sub-title">SYSTÈME DE VERROUILLAGE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.verrouillage,'bras-verrouillage-tbody')+'</tbody></table>'+
+  '<div class="sub-title">PLAQUES ET SIGNALITIQUE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.plaques,'bras-plaques-tbody')+'</tbody></table>'+
+  '<div class="sub-title">BRAS ET SYSTÈME DE GUIDAGE</div><table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.bras,'bras-bras-tbody')+'</tbody></table>'+
+  '<div class="section-title">Essais de fonctionnement</div>'+
+  '<p style="margin-bottom:5px;"><strong>Charge :</strong> '+(d.chargeEssai||'—')+'</p>'+
+  '<table><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.essais,'bras-essais-tbody')+'</tbody></table>'+
+  '<p style="margin-bottom:8px;"><strong>Limiteurs :</strong> '+(d.limiteurs||'—')+'</p>'+
+  '<div class="section-title">Épreuve statique</div>'+
+  '<p><strong>Charge :</strong> '+(d.chargeStatique||'—')+' — <strong>Durée :</strong> '+(d.dureeStatique||'—')+'</p>'+
+  '<table style="margin-top:6px;"><thead><tr><th>Élément</th><th style="width:40px;text-align:center;">C/NC</th></tr></thead><tbody>'+makeRows(brasData.statique,'bras-statique-tbody')+'</tbody></table>'+
+  '<div class="section-title">Épreuve dynamique</div>'+
+  '<p><strong>Charge :</strong> '+(d.chargeDynamique||'—')+'</p>'+
+  '<div class="section-title" style="margin-top:10px;">Observation(s)</div>'+
+  '<div class="obs">'+(d.obs||'Aucune observation').replace(/\n/g,'<br>')+'</div>'+
+  '<div class="section-title">Visa / Signature</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">'+
+  '<div class="field"><div class="fl">Contrôle réalisé par</div><div class="fv">'+(d.verificateur||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Accompagnant</div><div class="fv">'+(d.accompagnant||'—')+'</div></div>'+
+  '<div class="field"><div class="fl">Date</div><div class="fv">'+(d.date||'—')+'</div></div>'+
+  '</div>'+
+  (d.signature&&d.signature!='data:,'?'<div class="sig-box" style="margin-top:8px;"><div style="font-size:9px;color:#888;margin-bottom:4px;">SIGNATURE</div><img src="'+d.signature+'" style="max-height:80px;"></div>':'<div class="sig-box" style="margin-top:8px;height:80px;display:flex;align-items:center;justify-content:center;color:#aaa;">Signature</div>')+
+  '<div class="footer"><span>A7HYDRO · Rapport de vérification Bras de levage</span><span>Imprimé le '+new Date().toLocaleDateString('fr-FR')+'</span></div>'+
+  '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  win.document.close();
+}
+
+// ============================================================
+// NOTIFICATIONS VGP
+// ============================================================
+function toggleNotifs() {
+  var panel = document.getElementById('notif-panel');
+  if (panel.style.display === 'none' || !panel.style.display) {
+    panel.style.display = 'block';
+    loadNotifs();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+// Fermer le panel si on clique ailleurs
+document.addEventListener('click', function(e) {
+  var panel = document.getElementById('notif-panel');
+  var btn = panel && panel.previousElementSibling;
+  if (panel && panel.style.display === 'block') {
+    if (!panel.contains(e.target) && !e.target.closest('[onclick="toggleNotifs()"]')) {
+      panel.style.display = 'none';
+    }
+  }
+});
+
+function loadNotifs() {
+  var list = document.getElementById('notif-list');
+  var badge = document.getElementById('notif-badge');
+  if (!list) return;
+
+  // Récupérer les alertes ignorées
+  var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
+
+  db.collection('vgp_rapports').get().then(function(snap) {
+    var alertes = [];
+    snap.docs.forEach(function(doc) {
+      var d = doc.data();
+      if (!d.date) return;
+      if (ignored.indexOf(doc.id) !== -1) return;
+      var exp = new Date(d.date);
+      exp.setMonth(exp.getMonth() + 6);
+      var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
+      if (jours <= 15) {
+        alertes.push({
+          fbId: doc.id,
+          entreprise: d.entreprise || '—',
+          immat: d.immat || d.parc || '—',
+          marque: d.marque || '—',
+          modele: d.modele || '',
+          date: d.date,
+          jours: jours,
+          expire: jours < 0
+        });
+      }
+    });
+
+    // Mettre à jour le badge
+    if (alertes.length > 0) {
+      badge.style.display = 'flex';
+      badge.textContent = alertes.length;
+    } else {
+      badge.style.display = 'none';
+    }
+
+    if (!alertes.length) {
+      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">✅ Aucune alerte VGP</div>';
+      return;
+    }
+
+    alertes.sort(function(a,b){return a.jours-b.jours;});
+    list.innerHTML = alertes.map(function(a) {
+      return '<div id="notif-item-'+a.fbId+'" style="background:'+(a.expire?'#2d1515':'#1a1200')+';border:1px solid '+(a.expire?'#4a2020':'#3d2e00')+';border-radius:8px;padding:12px;margin-bottom:8px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'+
+        '<div style="flex:1;">'+
+        '<div style="font-weight:700;font-size:12px;color:'+(a.expire?'#fca5a5':'#f5c200')+';margin-bottom:4px;">'+(a.expire?'⚠️ VGP EXPIRÉE':'⏰ VGP À RENOUVELER')+'</div>'+
+        '<div style="font-size:13px;font-weight:600;">'+a.entreprise+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px;">🚗 '+a.immat+' · '+a.marque+' '+a.modele+'</div>'+
+        '<div style="font-size:11px;color:var(--text3);margin-top:2px;">VGP du '+formatDate(a.date)+' · '+(a.expire?'<strong style="color:var(--danger);">EXPIRÉE</strong>':'expire dans <strong style="color:#f5c200;">'+a.jours+' jours</strong>')+'</div>'+
+        '</div>'+
+        '<div style="font-family:\'DM Mono\',monospace;font-size:20px;font-weight:700;color:'+(a.expire?'var(--danger)':'#f5c200')+';">'+
+        (a.expire?'EXP':'+'+a.jours+'j')+
+        '</div>'+
+        '</div>'+
+        '<button onclick="dismissNotif(\''+a.fbId+'\')" class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;justify-content:center;">✓ Marquer comme traité</button>'+
+        '</div>';
+    }).join('');
+  });
+}
+
+function dismissNotif(fbId) {
+  var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
+  if (ignored.indexOf(fbId) === -1) ignored.push(fbId);
+  localStorage.setItem('vgp_notifs_ignored', JSON.stringify(ignored));
+  var item = document.getElementById('notif-item-'+fbId);
+  if (item) item.style.opacity = '0.3';
+  setTimeout(function(){ loadNotifs(); }, 300);
+  notify('Alerte marquée comme traitée');
+}
+
+function clearAllNotifs() {
+  if (!confirm('Effacer toutes les alertes ?')) return;
+  var badge = document.getElementById('notif-badge');
+  db.collection('vgp_rapports').get().then(function(snap) {
+    var ids = snap.docs.map(function(d){return d.id;});
+    localStorage.setItem('vgp_notifs_ignored', JSON.stringify(ids));
+    badge.style.display = 'none';
+    loadNotifs();
+    notify('Toutes les alertes effacées');
+  });
+}
+
+function updateNotifBadge() {
+  var ignored = JSON.parse(localStorage.getItem('vgp_notifs_ignored') || '[]');
+  var badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  db.collection('vgp_rapports').get().then(function(snap) {
+    var count = 0;
+    snap.docs.forEach(function(doc) {
+      if (ignored.indexOf(doc.id) !== -1) return;
+      var d = doc.data();
+      if (!d.date) return;
+      var exp = new Date(d.date);
+      exp.setMonth(exp.getMonth() + 6);
+      var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
+      if (jours <= 15) count++;
+    });
+    if (count > 0) {
+      badge.style.display = 'flex';
+      badge.textContent = count;
+    } else {
+      badge.style.display = 'none';
+    }
+  });
+}
+
+// ============================================================
+// ALERTES VGP 6 MOIS
+// ============================================================
+function alerteBadgeVGP(dateStr) {
+  if (!dateStr) return '';
+  var exp = new Date(dateStr);
+  exp.setMonth(exp.getMonth() + 6);
+  var now = new Date();
+  var jours = Math.ceil((exp - now) / (1000*60*60*24));
+  if (jours < 0) return ' <span style="background:#2d1515;color:#fca5a5;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">⚠️ EXPIRÉE</span>';
+  if (jours <= 15) return ' <span style="background:#2a1f00;color:#f5c200;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">⏰ '+jours+'J RESTANTS</span>';
+  return ' <span style="background:#0a1e12;color:#86efac;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">✅ '+jours+'j</span>';
+}
+
+function checkAlertesVGP() {
+  var alertDiv = document.getElementById('dash-alertes-vgp');
+  if (!alertDiv) return;
+  db.collection('vgp_rapports').get().then(function(snap) {
+    var alertes = [];
+    snap.docs.forEach(function(doc) {
+      var d = doc.data();
+      if (!d.date) return;
+      var exp = new Date(d.date);
+      exp.setMonth(exp.getMonth() + 6);
+      var jours = Math.ceil((exp - new Date()) / (1000*60*60*24));
+      if (jours <= 15) alertes.push({ entreprise:d.entreprise||'—', immat:d.immat||d.parc||'—', marque:d.marque||'—', modele:d.modele||'', date:d.date, jours:jours });
+    });
+    if (!alertes.length) {
+      alertDiv.innerHTML = '<div style="color:var(--success);font-size:13px;padding:8px 0;">✅ Aucune VGP à renouveler prochainement.</div>';
+      return;
+    }
+    alertes.sort(function(a,b){return a.jours-b.jours;});
+    alertDiv.innerHTML = alertes.map(function(a) {
+      var expire = a.jours < 0;
+      return '<div style="background:'+(expire?'#2d1515':'#2a1f00')+';border:1px solid '+(expire?'#4a2020':'#3d2e00')+';border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
+        '<div>'+
+        '<div style="font-weight:700;font-size:13px;color:'+(expire?'#fca5a5':'#f5c200')+';margin-bottom:4px;">'+(expire?'⚠️ VGP GRUE EXPIRÉE':'⏰ VGP GRUE À RENOUVELER')+'</div>'+
+        '<div style="font-size:13px;"><strong>'+a.entreprise+'</strong> · '+a.marque+' '+a.modele+'</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-top:2px;">🚗 Immat/Parc : <strong style="color:var(--accent);">'+a.immat+'</strong> · VGP du '+formatDate(a.date)+'</div>'+
+        '</div>'+
+        '<div style="font-family:\'DM Mono\',monospace;font-size:22px;font-weight:700;color:'+(expire?'var(--danger)':'#f5c200')+';text-align:center;">'+
+        (expire?'EXPIRÉE':'<span style="font-size:12px;display:block;color:var(--text2);">expire dans</span>'+Math.abs(a.jours)+'j')+
+        '</div>'+
+        '</div>';
+    }).join('');
+  });
+}
+
+function pillPrio(p){return p==='urgente'?'pill-urgent':p==='normale'?'pill-medium':'pill-low';}
 function pillStatut(s){return s==='Terminée'?'pill-termine':s==='En cours'?'pill-encours':'pill-attente';}
 function formatDate(d){if(!d)return'—';var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 function notify(msg){var el=document.getElementById('notif');el.textContent='✓ '+msg;el.style.display='block';setTimeout(function(){el.style.display='none';},2500);}
