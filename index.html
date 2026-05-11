@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>A7HYDRO · Gestion de Maintenance</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+// Enregistrement du Service Worker pour mode hors ligne
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/A7HYDRO/sw.js').then(function(reg) {
+      console.log('Service Worker enregistré');
+    }).catch(function(err) {
+      console.log('SW erreur:', err);
+    });
+  });
+}
+</script>
 <style>
 :root{--bg:#0a0e1a;--surface:#0f1629;--surface2:#162040;--border:#1e3060;--accent:#f5c200;--accent2:#1a6fd4;--danger:#ef4444;--success:#22c55e;--text:#f0f4ff;--text2:#7a9cc8;--text3:#3a5a88;--radius:10px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -136,6 +148,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div class="logo">A7<span>·</span>HYDRO <span class="badge">BTS</span></div>
   <div style="display:flex;gap:10px;align-items:center;">
     <span class="mono" style="color:var(--text2);font-size:12px;" id="dateDisplay"></span>
+    <span id="offline-badge" style="display:none;background:#2d1515;color:#fca5a5;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace;">📵 HORS LIGNE</span>
     <span id="header-user" style="color:var(--accent);font-size:12px;font-family:'DM Mono',monospace;"></span>
     <div style="position:relative;">
       <button onclick="toggleNotifs()" style="background:none;border:none;cursor:pointer;font-size:22px;position:relative;padding:4px 8px;" title="Alertes VGP">
@@ -195,6 +208,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
     <div>
       <div class="card">
         <div class="card-title"><div class="dot"></div>Informations générales</div>
+        <label>🏢 Entreprise cliente</label><input type="text" id="int-entreprise" placeholder="Nom de l'entreprise" style="border-color:var(--accent);font-weight:600;">
         <label>Date d'intervention</label><input type="date" id="int-date">
         <div id="int-tech-wrap"><label>Technicien</label><input type="text" id="int-tech" placeholder="Nom du technicien"></div>
         <label>Équipement / Machine</label><input type="text" id="int-machine" placeholder="Ex : Compresseur C-12...">
@@ -931,6 +945,23 @@ var currentPhotos = [];
 var recognition = null;
 var activeField = null;
 
+// ============================================================
+// MODE HORS LIGNE
+// ============================================================
+function updateOnlineStatus() {
+  var badge = document.getElementById('offline-badge');
+  if (!badge) return;
+  badge.style.display = navigator.onLine ? 'none' : 'inline-block';
+}
+window.addEventListener('online', function() {
+  updateOnlineStatus();
+  notify('✅ Connexion rétablie !');
+});
+window.addEventListener('offline', function() {
+  updateOnlineStatus();
+  notify('📵 Mode hors ligne activé');
+});
+
 // COMPTES
 var COMPTES = [
   { user: 'atelier',  pass: 'a7hydro26140!', nom: 'Atelier',  choix: true  },
@@ -998,6 +1029,7 @@ function lancerApp(compte) {
   }
   startListeners();
   setTimeout(function(){ updateNotifBadge(); }, 2000);
+  updateOnlineStatus();
 }
 
 // Vérifier session
@@ -1074,6 +1106,7 @@ function saveIntervention() {
   });
   db.collection('interventions').add({
     id: Date.now(), date:date, tech:tech, machine:machine,
+    entreprise: document.getElementById('int-entreprise').value.trim(),
     loc: document.getElementById('int-loc').value.trim(),
     statut: document.getElementById('int-statut').value,
     prio: document.getElementById('int-prio').value,
@@ -1093,7 +1126,7 @@ function saveIntervention() {
 }
 
 function resetForm() {
-  ['int-machine','int-loc','int-symptomes','int-cause','int-solution','int-obs','int-duree'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['int-machine','int-loc','int-symptomes','int-cause','int-solution','int-obs','int-duree','int-entreprise'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('int-prio').value='normale';
   document.getElementById('int-type').value='Corrective';
   document.getElementById('int-statut').value='Terminée';
@@ -1129,7 +1162,7 @@ function renderHistorique() {
   var type=document.getElementById('hist-type').value;
   var statut=document.getElementById('hist-statut').value;
   var data=interventions.filter(function(i){
-    var txt=[i.machine,i.tech,i.symptomes,i.cause,i.solution,i.loc].join(' ').toLowerCase();
+    var txt=[i.machine,i.tech,i.symptomes,i.cause,i.solution,i.loc,i.entreprise||''].join(' ').toLowerCase();
     return(!search||txt.includes(search))&&(!type||i.type===type)&&(!statut||i.statut===statut);
   });
   var tbody=document.getElementById('hist-tbody');
@@ -1240,7 +1273,7 @@ function printIntervention(fbId) {
   var win=window.open('','_blank');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche — '+i.machine+'</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:13px;color:#111;padding:20px;}.header{background:#f5c200;padding:18px 24px;border-radius:8px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;}.header h1{font-size:20px;font-weight:900;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}.field{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:10px;}.fl{font-size:10px;font-weight:700;text-transform:uppercase;color:#666;margin-bottom:2px;}.fv{font-size:13px;font-weight:600;}.sec{margin-bottom:12px;}.st{font-size:11px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:4px;border-bottom:1px solid #eee;padding-bottom:3px;}.sc{background:#f8f8f8;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:13px;line-height:1.6;}.pieces{display:flex;flex-wrap:wrap;gap:6px;}.pt{background:#f5c200;color:#000;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}.photos img{width:140px;height:100px;object-fit:cover;border-radius:6px;margin:4px;}.footer{margin-top:20px;border-top:2px solid #f5c200;padding-top:10px;display:flex;justify-content:space-between;font-size:11px;color:#888;}.sig{border:1px solid #ddd;border-radius:6px;height:55px;margin-top:16px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;}@media print{body{padding:8px;}}</style></head><body>'+
   '<div class="header"><div><h1>A7·HYDRO — Fiche intervention</h1><div style="font-size:12px;opacity:.7;">Gestion de Maintenance</div></div><div style="text-align:right;font-size:12px;"><div><strong>Date :</strong> '+formatDate(i.date)+'</div><div><strong>Réf :</strong> #'+i.id+'</div></div></div>'+
-  '<div class="grid"><div class="field"><div class="fl">Machine</div><div class="fv">'+i.machine+'</div></div><div class="field"><div class="fl">Technicien</div><div class="fv">'+i.tech+'</div></div><div class="field"><div class="fl">Localisation</div><div class="fv">'+(i.loc||'—')+'</div></div><div class="field"><div class="fl">Durée</div><div class="fv">'+(i.duree?i.duree+'h':'—')+'</div></div><div class="field"><div class="fl">Type</div><div class="fv">'+i.type+'</div></div><div class="field"><div class="fl">Statut</div><div class="fv">'+(i.statut||'Terminée')+'</div></div></div>'+
+  '<div class="field" style="grid-column:1/-1;background:#1a1200;border-color:var(--accent);"><div class="fl">Entreprise</div><div class="fv" style="color:var(--accent);font-size:14px;">'+(i.entreprise||'—')+'</div></div><div class="grid"><div class="field"><div class="fl">Machine</div><div class="fv">'+i.machine+'</div></div><div class="field"><div class="fl">Technicien</div><div class="fv">'+i.tech+'</div></div><div class="field"><div class="fl">Localisation</div><div class="fv">'+(i.loc||'—')+'</div></div><div class="field"><div class="fl">Durée</div><div class="fv">'+(i.duree?i.duree+'h':'—')+'</div></div><div class="field"><div class="fl">Type</div><div class="fv">'+i.type+'</div></div><div class="field"><div class="fl">Statut</div><div class="fv">'+(i.statut||'Terminée')+'</div></div></div>'+
   (i.symptomes?'<div class="sec"><div class="st">🔴 Symptômes</div><div class="sc">'+i.symptomes+'</div></div>':'')+
   (i.cause?'<div class="sec"><div class="st">🔍 Cause</div><div class="sc">'+i.cause+'</div></div>':'')+
   (i.solution?'<div class="sec"><div class="st">✅ Solution</div><div class="sc">'+i.solution+'</div></div>':'')+
