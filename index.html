@@ -290,10 +290,63 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
 
 <div class="panel" id="panel-knowledge">
   <div class="section-header"><div class="section-title">🧠 Base de connaissances</div></div>
-  <div class="card">
-    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="kb-search" placeholder="Ex : vibration compresseur, fuite huile..." oninput="searchKnowledgeBase()" style="margin-bottom:0;font-size:15px;padding:13px 13px 13px 40px;"></div>
+
+  <!-- ONGLETS INTERNES -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn btn-primary btn-sm" onclick="switchKB('interventions')" id="kb-tab-interventions">🔧 Interventions</button>
+    <button class="btn btn-secondary btn-sm" onclick="switchKB('entreprises')" id="kb-tab-entreprises">🏢 Par entreprise</button>
+    <button class="btn btn-secondary btn-sm" onclick="switchKB('references')" id="kb-tab-references">⚙️ Références pièces</button>
   </div>
-  <div id="kb-results"><div class="empty"><div class="empty-icon">🔍</div><p>Tapez des mots-clés pour chercher</p></div></div>
+
+  <!-- RECHERCHE INTERVENTIONS -->
+  <div id="kb-section-interventions">
+    <div class="card">
+      <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="kb-search" placeholder="Ex : vibration compresseur, fuite huile..." oninput="searchKnowledgeBase()" style="margin-bottom:0;font-size:15px;padding:13px 13px 13px 40px;"></div>
+    </div>
+    <div id="kb-results"><div class="empty"><div class="empty-icon">🔍</div><p>Tapez des mots-clés pour chercher</p></div></div>
+  </div>
+
+  <!-- RECHERCHE PAR ENTREPRISE -->
+  <div id="kb-section-entreprises" style="display:none;">
+    <div class="card">
+      <div class="search-wrap"><span class="search-icon">🏢</span><input type="text" id="kb-entreprise-search" placeholder="Tapez le nom de l'entreprise..." oninput="searchByEntreprise()" style="margin-bottom:0;font-size:15px;padding:13px 13px 13px 40px;"></div>
+    </div>
+    <div id="kb-entreprise-results"><div class="empty"><div class="empty-icon">🏢</div><p>Tapez un nom d'entreprise pour voir tous ses véhicules et interventions</p></div></div>
+  </div>
+
+  <!-- REFERENCES PIECES -->
+  <div id="kb-section-references" style="display:none;">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;">Catalogue de références pièces</div>
+        <button class="btn btn-primary btn-sm" onclick="openRefModal()">+ Ajouter une référence</button>
+      </div>
+      <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="kb-ref-search" placeholder="Référence ou nom de la pièce..." oninput="searchReferences()" style="margin-bottom:0;font-size:15px;padding:13px 13px 13px 40px;"></div>
+    </div>
+    <div id="kb-ref-results"><div class="empty"><div class="empty-icon">⚙️</div><p>Tapez une référence ou un nom pour chercher</p></div></div>
+  </div>
+</div>
+
+<!-- MODAL AJOUT REFERENCE -->
+<div id="ref-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeRefModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;max-width:500px;width:100%;padding:24px;">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-bottom:16px;">⚙️ Ajouter une référence pièce</div>
+    <input type="hidden" id="ref-edit-id">
+    <label>Référence</label><input type="text" id="ref-code" placeholder="Ex : ROL-6205, JT-NR-42, 1234567...">
+    <label>Désignation / Nom de la pièce</label><input type="text" id="ref-nom" placeholder="Ex : Roulement à billes, Joint torique...">
+    <label>Catégorie</label>
+    <select id="ref-cat">
+      <option>Roulement</option><option>Joint</option><option>Courroie</option>
+      <option>Filtre</option><option>Électrique</option><option>Pneumatique</option>
+      <option>Hydraulique</option><option>Visserie</option><option>Autre</option>
+    </select>
+    <label>Machines concernées (optionnel)</label><input type="text" id="ref-machines" placeholder="Ex : FASSI F110, HIAB 077...">
+    <label>Notes / Remarques</label><textarea id="ref-notes" placeholder="Informations utiles sur cette pièce..." style="min-height:70px;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn btn-primary" onclick="saveReference()" style="flex:1;justify-content:center;">💾 Enregistrer</button>
+      <button class="btn btn-secondary" onclick="closeRefModal()">Annuler</button>
+    </div>
+  </div>
 </div>
 
 <div class="panel" id="panel-fassi">
@@ -1198,6 +1251,210 @@ function sec(t,c){if(!c)return'';return'<div style="margin-bottom:14px;"><div st
 function closeModal(){document.getElementById('modal').style.display='none';}
 
 // BASE DE CONNAISSANCES
+// ============================================================
+// BASE DE CONNAISSANCES - ONGLETS
+// ============================================================
+function switchKB(tab) {
+  ['interventions','entreprises','references'].forEach(function(t) {
+    document.getElementById('kb-section-'+t).style.display = t===tab?'block':'none';
+    var btn = document.getElementById('kb-tab-'+t);
+    btn.className = t===tab?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  });
+  if (tab==='references') searchReferences();
+}
+
+// RECHERCHE PAR ENTREPRISE
+function searchByEntreprise() {
+  var q = (document.getElementById('kb-entreprise-search').value||'').toLowerCase().trim();
+  var el = document.getElementById('kb-entreprise-results');
+  if (!q || q.length < 2) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>Tapez un nom d\'entreprise</p></div>';
+    return;
+  }
+
+  // Chercher dans les interventions
+  var interv = interventions.filter(function(i) {
+    return (i.entreprise||'').toLowerCase().includes(q) ||
+           (i.machine||'').toLowerCase().includes(q);
+  });
+
+  // Regrouper par immat/machine
+  var vehicules = {};
+  interv.forEach(function(i) {
+    var key = (i.immat || i.machine || 'inconnu').toLowerCase();
+    if (!vehicules[key]) vehicules[key] = { immat: i.immat||'', machine: i.machine||'', entreprise: i.entreprise||'', interventions: [] };
+    vehicules[key].interventions.push(i);
+  });
+
+  if (!Object.keys(vehicules).length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏢</div><p>Aucune intervention trouvée pour "'+q+'"</p></div>';
+    return;
+  }
+
+  el.innerHTML = Object.values(vehicules).map(function(v) {
+    var last = v.interventions[0];
+    return '<div class="card" style="margin-bottom:12px;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">'+
+      '<div>'+
+      '<div style="font-family:\'Syne\',sans-serif;font-weight:800;font-size:15px;color:var(--accent);">🏢 '+v.entreprise+'</div>'+
+      '<div style="font-size:14px;font-weight:600;margin-top:4px;">'+v.machine+(v.immat?' · <span style="color:var(--accent);font-family:\'DM Mono\',monospace;">🚗 '+v.immat+'</span>':'')+'</div>'+
+      '<div style="font-size:12px;color:var(--text2);margin-top:3px;">'+v.interventions.length+' intervention(s) · Dernière le '+formatDate(last.date)+'</div>'+
+      '</div>'+
+      '</div>'+
+      '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">'+
+      v.interventions.slice(0,3).map(function(i) {
+        return '<div style="padding:6px 0;border-bottom:1px solid #111e38;display:flex;justify-content:space-between;align-items:center;">'+
+          '<div><div style="font-size:12px;font-weight:600;">'+formatDate(i.date)+' · '+i.tech+'</div>'+
+          (i.symptomes?'<div style="font-size:11px;color:var(--text2);">'+i.symptomes.substring(0,60)+(i.symptomes.length>60?'...':'')+'</div>':'')+'</div>'+
+          '<button class="btn btn-info btn-sm" onclick="showDetail(\''+i._fbId+'\')">👁 Voir</button>'+
+          '</div>';
+      }).join('')+
+      (v.interventions.length > 3 ? '<div style="font-size:12px;color:var(--text3);margin-top:6px;text-align:center;">+ '+(v.interventions.length-3)+' autre(s) intervention(s)</div>' : '')+
+      '</div></div>';
+  }).join('');
+}
+
+// REFERENCES PIECES
+function openRefModal(editId) {
+  document.getElementById('ref-edit-id').value = editId||'';
+  if (editId) {
+    db.collection('references_pieces').doc(editId).get().then(function(doc) {
+      if (!doc.exists) return;
+      var d = doc.data();
+      document.getElementById('ref-code').value = d.code||'';
+      document.getElementById('ref-nom').value = d.nom||'';
+      document.getElementById('ref-cat').value = d.cat||'Autre';
+      document.getElementById('ref-machines').value = d.machines||'';
+      document.getElementById('ref-notes').value = d.notes||'';
+    });
+  } else {
+    ['ref-code','ref-nom','ref-machines','ref-notes'].forEach(function(id){document.getElementById(id).value='';});
+    document.getElementById('ref-cat').value = 'Autre';
+  }
+  document.getElementById('ref-modal').style.display = 'flex';
+}
+
+function closeRefModal() { document.getElementById('ref-modal').style.display = 'none'; }
+
+function saveReference() {
+  var code = document.getElementById('ref-code').value.trim();
+  var nom = document.getElementById('ref-nom').value.trim();
+  if (!code || !nom) { alert('Référence et nom obligatoires.'); return; }
+  var editId = document.getElementById('ref-edit-id').value;
+  var data = {
+    code: code, nom: nom,
+    cat: document.getElementById('ref-cat').value,
+    machines: document.getElementById('ref-machines').value.trim(),
+    notes: document.getElementById('ref-notes').value.trim(),
+    createdAt: new Date().toISOString().split('T')[0]
+  };
+  var promise = editId
+    ? db.collection('references_pieces').doc(editId).set(data)
+    : db.collection('references_pieces').add(data);
+  promise.then(function() {
+    closeRefModal();
+    searchReferences();
+    notify('Référence enregistrée !');
+  }).catch(function(e){ alert('Erreur : '+e.message); });
+}
+
+function searchReferences() {
+  var q = (document.getElementById('kb-ref-search')||{value:''}).value.toLowerCase().trim();
+  var el = document.getElementById('kb-ref-results');
+  if (!el) return;
+
+  db.collection('references_pieces').get().then(function(snap) {
+    var refs = snap.docs.map(function(d){ return Object.assign({},d.data(),{_fbId:d.id}); });
+
+    if (q) {
+      refs = refs.filter(function(r) {
+        return (r.code||'').toLowerCase().includes(q) ||
+               (r.nom||'').toLowerCase().includes(q) ||
+               (r.cat||'').toLowerCase().includes(q) ||
+               (r.machines||'').toLowerCase().includes(q);
+      });
+    }
+
+    // Chercher aussi dans les pièces utilisées dans les interventions
+    var fromInterv = [];
+    if (q) {
+      var pieces_trouvees = {};
+      interventions.forEach(function(i) {
+        (i.pieces||[]).forEach(function(p) {
+          if ((p.ref||'').toLowerCase().includes(q)) {
+            var key = p.ref.toLowerCase();
+            if (!pieces_trouvees[key]) pieces_trouvees[key] = { ref: p.ref, count: 0, interventions: [] };
+            pieces_trouvees[key].count++;
+            pieces_trouvees[key].interventions.push({ machine: i.machine, date: i.date, tech: i.tech });
+          }
+        });
+      });
+      fromInterv = Object.values(pieces_trouvees);
+    }
+
+    if (!refs.length && !fromInterv.length && q) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">⚙️</div><p>Aucune référence trouvée pour "'+q+'"</p></div>';
+      return;
+    }
+
+    if (!q && !refs.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">⚙️</div><p>Aucune référence enregistrée.<br>Cliquez sur "+ Ajouter une référence" pour commencer.</p></div>';
+      return;
+    }
+
+    var html = '';
+
+    // Références du catalogue
+    if (refs.length) {
+      html += '<div style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;color:var(--accent);margin-bottom:10px;text-transform:uppercase;">📚 Catalogue</div>';
+      html += refs.map(function(r) {
+        return '<div class="card" style="margin-bottom:10px;padding:14px 16px;">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">'+
+          '<div style="flex:1;">'+
+          '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">'+
+          '<span style="font-family:\'DM Mono\',monospace;font-size:18px;font-weight:700;color:var(--accent);">'+r.code+'</span>'+
+          '<span class="tag">'+r.cat+'</span>'+
+          '</div>'+
+          '<div style="font-size:14px;font-weight:600;">'+r.nom+'</div>'+
+          (r.machines?'<div style="font-size:12px;color:var(--accent2);margin-top:4px;">🔧 '+r.machines+'</div>':'')+
+          (r.notes?'<div style="font-size:12px;color:var(--text2);margin-top:4px;">📝 '+r.notes+'</div>':'')+
+          '</div>'+
+          '<div style="display:flex;gap:6px;">'+
+          '<button class="btn btn-secondary btn-sm" onclick="openRefModal(\''+r._fbId+'\')">✏</button>'+
+          '<button class="btn btn-danger btn-sm" onclick="deleteReference(\''+r._fbId+'\')">🗑</button>'+
+          '</div></div></div>';
+      }).join('');
+    }
+
+    // Pièces trouvées dans les interventions
+    if (fromInterv.length) {
+      html += '<div style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;color:var(--accent2);margin:16px 0 10px;text-transform:uppercase;">🔧 Trouvé dans les interventions</div>';
+      html += fromInterv.map(function(p) {
+        return '<div class="card" style="margin-bottom:10px;padding:14px 16px;border-color:var(--accent2);">'+
+          '<div style="font-family:\'DM Mono\',monospace;font-size:18px;font-weight:700;color:var(--accent2);margin-bottom:6px;">'+p.ref+'</div>'+
+          '<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Utilisée '+p.count+' fois dans les interventions</div>'+
+          '<div>'+p.interventions.slice(0,3).map(function(i){
+            return '<div style="font-size:11px;color:var(--text3);padding:3px 0;">📅 '+formatDate(i.date)+' · '+i.machine+' · '+i.tech+'</div>';
+          }).join('')+'</div>'+
+          '<button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="document.getElementById(\'ref-code\').value=\''+p.ref+'\';openRefModal()">+ Ajouter au catalogue</button>'+
+          '</div>';
+      }).join('');
+    }
+
+    el.innerHTML = html;
+  }).catch(function() {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>Erreur de chargement.</p></div>';
+  });
+}
+
+function deleteReference(fbId) {
+  if (!confirm('Supprimer cette référence ?')) return;
+  db.collection('references_pieces').doc(fbId).delete().then(function() {
+    searchReferences();
+    notify('Référence supprimée');
+  });
+}
+
 function searchKnowledgeBase() {
   var q=document.getElementById('kb-search').value.toLowerCase().trim();
   var el=document.getElementById('kb-results');
