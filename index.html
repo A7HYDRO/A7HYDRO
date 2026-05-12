@@ -194,7 +194,18 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   </div>
   <div class="grid2">
     <div class="card"><div class="card-title"><div class="dot"></div>Dernières interventions</div><div id="dash-recent"><div class="empty"><div class="empty-icon">📭</div><p>Aucune intervention</p></div></div></div>
-    <div class="card"><div class="card-title"><div class="dot"></div>Pannes les plus fréquentes</div><div id="dash-pannes"><div class="empty"><div class="empty-icon">📈</div><p>Données insuffisantes</p></div></div></div>
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>📊 Interventions par technicien</div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <select id="graph-mois" onchange="renderDashboard()" style="margin-bottom:0;flex:1;min-width:140px;">
+        </select>
+        <select id="graph-type" onchange="renderDashboard()" style="margin-bottom:0;flex:1;min-width:140px;">
+          <option value="count">Nombre d'interventions</option>
+          <option value="heures">Heures d'intervention</option>
+        </select>
+      </div>
+      <div id="dash-pannes"><div class="empty"><div class="empty-icon">📊</div><p>Données insuffisantes</p></div></div>
+    </div>
   </div>
   <div class="card" style="border-color:#3d2e00;">
     <div class="card-title"><div class="dot" style="background:#f5c200;"></div>⏰ Alertes VGP Grue — Renouvellements</div>
@@ -1201,12 +1212,117 @@ function renderDashboard() {
   var rec=document.getElementById('dash-recent');
   if(!interventions.length){rec.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>Aucune intervention</p></div>';}
   else rec.innerHTML=interventions.slice(0,5).map(function(i){return '<div style="padding:10px 0;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">'+i.machine+'</span><span class="pill '+pillPrio(i.prio)+'">'+i.prio+'</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px;">'+formatDate(i.date)+' · '+i.tech+'</div>'+(i.symptomes?'<div style="font-size:12px;color:var(--text3);margin-top:2px;">'+i.symptomes.substring(0,80)+(i.symptomes.length>80?'...':'')+'</div>':'')+'</div>';}).join('');
-  var freq={};
-  interventions.forEach(function(i){var k=i.machine.toLowerCase();freq[k]=(freq[k]||0)+1;});
-  var sorted=Object.entries(freq).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
-  var pann=document.getElementById('dash-pannes');
-  if(!sorted.length){pann.innerHTML='<div class="empty"><div class="empty-icon">📈</div><p>Données insuffisantes</p></div>';}
-  else{var max=sorted[0][1];pann.innerHTML=sorted.map(function(e){return '<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span style="text-transform:capitalize;">'+e[0]+'</span><span class="mono" style="color:var(--accent);">'+e[1]+' interv.</span></div><div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;"><div style="height:100%;width:'+(e[1]/max*100)+'%;background:var(--accent);border-radius:4px;"></div></div></div>';}).join('');}
+  // Remplir le sélecteur de mois avec les mois disponibles
+  var moisSelect = document.getElementById('graph-mois');
+  if (moisSelect) {
+    var moisDispo = {};
+    interventions.forEach(function(i) {
+      if (!i.date) return;
+      var d = new Date(i.date);
+      var key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      var label = d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+      moisDispo[key] = label;
+    });
+    var currentKey = new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+    if (!moisDispo[currentKey]) {
+      var now3 = new Date();
+      moisDispo[currentKey] = now3.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    }
+    var sortedMois = Object.keys(moisDispo).sort().reverse();
+    var currentVal = moisSelect.value || currentKey;
+    moisSelect.innerHTML = sortedMois.map(function(k) {
+      return '<option value="'+k+'"'+(k===currentVal?' selected':'')+'>'+moisDispo[k].charAt(0).toUpperCase()+moisDispo[k].slice(1)+'</option>';
+    }).join('');
+  }
+
+  // Graphique interventions par technicien
+  var pann = document.getElementById('dash-pannes');
+  var graphMois = document.getElementById('graph-mois');
+  var graphType = document.getElementById('graph-type');
+  var selectedMois = graphMois ? graphMois.value : (new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'));
+  var selectedType = graphType ? graphType.value : 'count';
+
+  var moisFiltre = interventions.filter(function(i) {
+    if (!i.date) return false;
+    var d = new Date(i.date);
+    var key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return key === selectedMois;
+  });
+
+  if (!moisFiltre.length) {
+    pann.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><p>Aucune intervention ce mois-ci</p></div>';
+  } else {
+    var parTech = {};
+    moisFiltre.forEach(function(i) {
+      var t = i.tech || 'Inconnu';
+      if (!parTech[t]) parTech[t] = { count: 0, heures: 0 };
+      parTech[t].count++;
+      parTech[t].heures += parseFloat(i.duree||0);
+    });
+
+    var sortedTech = Object.entries(parTech).sort(function(a,b){
+      return selectedType==='heures' ? b[1].heures-a[1].heures : b[1].count-a[1].count;
+    });
+
+    var maxVal = sortedTech[0][1][selectedType==='heures'?'heures':'count'];
+    var totalCount = moisFiltre.length;
+    var totalHeures = moisFiltre.reduce(function(s,i){return s+parseFloat(i.duree||0);},0);
+    var couleurs = ['#f5c200','#1a6fd4','#22c55e','#ef4444','#c084fc','#f97316','#06b6d4','#ec4899'];
+
+    pann.innerHTML =
+      '<div style="margin-bottom:12px;font-size:11px;color:var(--text3);font-family:\'DM Mono\',monospace;display:flex;justify-content:space-between;">'+
+      '<span>'+totalCount+' intervention'+(totalCount>1?'s':'')+' au total</span>'+
+      '<span>'+totalHeures.toFixed(1)+'h au total</span>'+
+      '</div>'+
+      sortedTech.map(function(e, idx) {
+        var val = selectedType==='heures' ? e[1].heures : e[1].count;
+        var pct = maxVal > 0 ? Math.round((val/maxVal)*100) : 0;
+        var pctTotal = selectedType==='heures'
+          ? (totalHeures>0 ? Math.round((e[1].heures/totalHeures)*100) : 0)
+          : Math.round((e[1].count/totalCount)*100);
+        var couleur = couleurs[idx % couleurs.length];
+        var affVal = selectedType==='heures' ? e[1].heures.toFixed(1)+'h' : e[1].count+' interv.';
+        var affSub = selectedType==='heures' ? e[1].count+' interv.' : e[1].heures.toFixed(1)+'h';
+        return '<div style="margin-bottom:14px;">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'+
+          '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<div style="width:10px;height:10px;border-radius:50%;background:'+couleur+';flex-shrink:0;"></div>'+
+          '<span style="font-size:13px;font-weight:600;">'+e[0]+'</span>'+
+          '</div>'+
+          '<div style="text-align:right;">'+
+          '<span class="mono" style="font-size:14px;font-weight:700;color:'+couleur+';">'+affVal+'</span>'+
+          '<span style="font-size:11px;color:var(--text3);margin-left:6px;">'+pctTotal+'% · '+affSub+'</span>'+
+          '</div>'+
+          '</div>'+
+          '<div style="background:var(--surface2);border-radius:6px;height:12px;overflow:hidden;position:relative;">'+
+          '<div style="height:100%;width:'+pct+'%;background:'+couleur+';border-radius:6px;transition:width .6s ease;"></div>'+
+          '</div>'+
+          '</div>';
+      }).join('')+
+      '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:center;">'+
+      '<svg width="100" height="100" viewBox="0 0 100 100">'+
+      (function(){
+        var svgPaths=''; var startAngle=-Math.PI/2;
+        var totalSvg = sortedTech.reduce(function(s,e){return s+(selectedType==='heures'?e[1].heures:e[1].count);},0);
+        sortedTech.forEach(function(e,idx){
+          var val=selectedType==='heures'?e[1].heures:e[1].count;
+          var angle=(val/totalSvg)*2*Math.PI;
+          var endAngle=startAngle+angle;
+          var x1=50+45*Math.cos(startAngle); var y1=50+45*Math.sin(startAngle);
+          var x2=50+45*Math.cos(endAngle); var y2=50+45*Math.sin(endAngle);
+          var largeArc=angle>Math.PI?1:0;
+          var couleur=couleurs[idx%couleurs.length];
+          if(sortedTech.length===1){svgPaths+='<circle cx="50" cy="50" r="45" fill="'+couleur+'"/>';}
+          else{svgPaths+='<path d="M50,50 L'+x1+','+y1+' A45,45 0 '+largeArc+',1 '+x2+','+y2+' Z" fill="'+couleur+'"/>';}
+          startAngle=endAngle;
+        });
+        svgPaths+='<circle cx="50" cy="50" r="20" fill="var(--surface)"/>';
+        var labelSvg=selectedType==='heures'?totalHeures.toFixed(0)+'h':totalCount+'';
+        svgPaths+='<text x="50" y="54" text-anchor="middle" font-size="10" fill="var(--text)" font-family="DM Mono,monospace" font-weight="700">'+labelSvg+'</text>';
+        return svgPaths;
+      })()+
+      '</svg></div>';
+  }
 }
 
 // HISTORIQUE
