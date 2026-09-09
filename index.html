@@ -167,6 +167,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div class="tab" onclick="showTab('hiab')" id="tab-hiab">🔵 Alarmes HIAB</div>
   <div class="tab" onclick="showTab('ia')" id="tab-ia">🤖 Assistant IA</div>
   <div class="tab" onclick="showTab('vgp-unified')" id="tab-vgp-unified">📋 VGP</div>
+  <div class="tab" onclick="showTab('confidentialite')" id="tab-confidentialite">🔒 Confidentialité</div>
 </nav>
 <main>
 
@@ -262,8 +263,20 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
         </div>
         <div class="photo-preview" id="photo-preview"></div>
       </div>
+      <div class="card" style="border-color:var(--accent);">
+        <div class="card-title"><div class="dot"></div>🤖 Scanner une fiche papier (IA)</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6;">Prenez en photo votre fiche d'intervention papier : l'IA lit la fiche et remplit automatiquement l'entreprise, la machine, le technicien, la durée, les symptômes, la cause, la solution et les pièces utilisées. Vérifiez toujours les champs avant d'enregistrer.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('scan-galerie').click()">🖼 Choisir une photo</button>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('scan-camera').click()">📸 Photographier la fiche</button>
+        </div>
+        <input type="file" id="scan-galerie" accept="image/*" style="display:none;" onchange="handleScanFiche(event)">
+        <input type="file" id="scan-camera" accept="image/*" capture="environment" style="display:none;" onchange="handleScanFiche(event)">
+        <div id="scan-preview" style="margin-top:4px;"></div>
+        <div id="scan-status" style="font-size:12px;font-weight:600;margin-top:8px;display:none;"></div>
+      </div>
       <div class="card" style="border-color:#1a2d5a;">
-        <div class="card-title"><div class="dot" style="background:var(--accent2)"></div>Suggestions base de connaissances</div>
+        <div class="card-title"><div class="dot"></div>Suggestions base de connaissances</div>
         <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="kb-quick-search" placeholder="Tapez les symptômes..." oninput="quickKbSearch()"></div>
         <div id="kb-suggestions"><p style="color:var(--text3);font-size:12px;">Tapez des mots-clés...</p></div>
       </div>
@@ -545,6 +558,77 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
   <div id="uvgp-hist-list"><div class="empty"><div class="empty-icon">📂</div><p>Aucun rapport VGP sauvegardé.</p></div></div>
 </div>
 
+<!-- CONFIDENTIALITE -->
+<div class="panel" id="panel-confidentialite">
+  <div class="section-header"><div class="section-title">🔒 Politique de confidentialité</div></div>
+
+  <div class="card" style="border-color:var(--accent);background:linear-gradient(135deg,#1a1200 0%,#0f1629 100%);">
+    <p style="font-size:12px;color:var(--accent);line-height:1.7;">⚠️ <strong>Modèle générique fourni à titre indicatif.</strong> Ce document n'est pas un avis juridique. Avant diffusion à vos salariés/clients, faites-le relire et compléter (raison sociale, SIRET, adresse, DPO, registre de traitement, information du CSE le cas échéant) par un juriste ou votre DPO, notamment pour la conformité RGPD/CNIL vis-à-vis des données de vos salariés (techniciens) et de vos clients.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>1. Responsable du traitement</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">
+      L'outil A7HYDRO est édité et utilisé en interne par <strong style="color:var(--text);">[NOM DE LA SOCIÉTÉ — ex : A7HYDRO SAS]</strong>, dont le siège social est situé au <strong style="color:var(--text);">[ADRESSE COMPLÈTE]</strong>, immatriculée au RCS sous le numéro <strong style="color:var(--text);">[SIRET / RCS]</strong>.<br>
+      Contact pour toute question relative aux données personnelles : <strong style="color:var(--text);">[EMAIL DE CONTACT / DPO]</strong>.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>2. Données collectées</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">L'application traite les catégories de données suivantes :</p>
+    <ul style="font-size:13px;line-height:1.9;color:var(--text2);padding-left:20px;margin-top:6px;">
+      <li><strong style="color:var(--text);">Données d'identification des utilisateurs</strong> : identifiant, nom du technicien (comptes internes) ;</li>
+      <li><strong style="color:var(--text);">Données relatives aux interventions</strong> : entreprise cliente, machine, localisation, description des pannes, pièces utilisées, durée, statut ;</li>
+      <li><strong style="color:var(--text);">Photographies</strong> prises depuis l'appareil (photos d'intervention, photos de fiches papier scannées) ;</li>
+      <li><strong style="color:var(--text);">Dictée vocale</strong> : lorsque la fonction microphone est utilisée, l'audio est transmis au moteur de reconnaissance vocale du navigateur (service tiers, ex. Google) pour être converti en texte ;</li>
+      <li><strong style="color:var(--text);">Signature électronique</strong> apposée sur les rapports VGP ;</li>
+      <li><strong style="color:var(--text);">Données techniques</strong> : horodatage, informations de connexion.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>3. Finalités et bases légales</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">Les données sont traitées pour : la gestion et la traçabilité des interventions de maintenance, l'établissement des rapports de Vérification Générale Périodique (VGP) imposés par le Code du travail, l'assistance au diagnostic via intelligence artificielle, et l'amélioration continue du service. Ces traitements reposent sur l'intérêt légitime de l'employeur à assurer le suivi de son parc matériel et de ses interventions, ainsi que, pour les VGP, sur le respect d'une obligation légale.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>4. Destinataires et sous-traitants</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">Les données sont hébergées et traitées par les prestataires suivants, agissant en qualité de sous-traitants :</p>
+    <ul style="font-size:13px;line-height:1.9;color:var(--text2);padding-left:20px;margin-top:6px;">
+      <li><strong style="color:var(--text);">Google Firebase / Firestore</strong> (Google Ireland Ltd / Google LLC) : hébergement de la base de données de l'application ;</li>
+      <li><strong style="color:var(--text);">Anthropic</strong> (fournisseur du modèle Claude) : lorsque l'Assistant IA ou le scan automatique de fiche papier est utilisé, le texte saisi et/ou la photo transmise sont envoyés à l'API Anthropic afin de générer une réponse ou d'extraire les informations de la fiche. Ces données ne sont pas utilisées par A7HYDRO à d'autres fins.</li>
+    </ul>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);margin-top:8px;">Ces prestataires peuvent traiter les données hors de l'Union européenne (notamment aux États-Unis). Dans ce cas, le transfert est encadré par des garanties appropriées (clauses contractuelles types de la Commission européenne). Aucune donnée n'est vendue ni cédée à des tiers à des fins commerciales.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>5. Durée de conservation</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">Les fiches d'intervention et rapports VGP sont conservés pendant la durée nécessaire au suivi du matériel et au respect des obligations légales de contrôle périodique, puis archivés ou supprimés selon la politique interne de l'entreprise. Les comptes utilisateurs sont conservés le temps de la relation de travail.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>6. Sécurité</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">L'accès à l'application est protégé par un identifiant et un mot de passe individuels. Il est recommandé de ne pas partager ses identifiants et de se déconnecter après usage sur un appareil partagé. L'éditeur met en œuvre les mesures techniques raisonnables pour protéger les données contre l'accès non autorisé, la perte ou l'altération.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>7. Cookies et stockage local</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">L'application utilise le stockage local du navigateur (localStorage) uniquement pour conserver la session de connexion et les préférences de notifications (alertes VGP traitées). Aucun cookie publicitaire ou traceur tiers n'est utilisé.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="dot"></div>8. Vos droits</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, toute personne concernée dispose d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de ses données. Ces droits peuvent être exercés en écrivant à <strong style="color:var(--text);">[EMAIL DE CONTACT / DPO]</strong>. En cas de difficulté, une réclamation peut être introduite auprès de la CNIL (www.cnil.fr).</p>
+  </div>
+
+  <div class="card" style="border-color:var(--border);">
+    <div class="card-title"><div class="dot"></div>9. Mentions légales</div>
+    <p style="font-size:13px;line-height:1.8;color:var(--text2);">Éditeur : <strong style="color:var(--text);">[NOM DE LA SOCIÉTÉ]</strong> — <strong style="color:var(--text);">[ADRESSE]</strong> — <strong style="color:var(--text);">[SIRET]</strong>.<br>Hébergement de l'application : <strong style="color:var(--text);">[HÉBERGEUR / PLATEFORME]</strong>. Base de données : Google Firebase (Google Ireland Ltd, Gordon House, Barrow Street, Dublin 4, Irlande).</p>
+    <p style="font-size:11px;color:var(--text3);margin-top:10px;">Dernière mise à jour : <span id="confidentialite-date"></span></p>
+  </div>
+</div>
+
 </main>
 
 <!-- Firebase -->
@@ -611,8 +695,19 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-firebase.initializeApp({apiKey:"AIzaSyBKrPiheHnzwlsmpsvo4wZMjCj8Q5iQ09g",authDomain:"a7hydro.firebaseapp.com",projectId:"a7hydro",storageBucket:"a7hydro.firebasestorage.app",messagingSenderId:"896685383745",appId:"1:896685383745:web:095308dd85580f291c26c0"});
-var db=firebase.firestore();
+// Firebase est optionnel pour permettre la connexion même sans Internet.
+var db=null;
+try{
+  if(typeof firebase!=='undefined'){
+    if(!firebase.apps.length){
+      firebase.initializeApp({apiKey:"AIzaSyBKrPiheHnzwlsmpsvo4wZMjCj8Q5iQ09g",authDomain:"a7hydro.firebaseapp.com",projectId:"a7hydro",storageBucket:"a7hydro.firebasestorage.app",messagingSenderId:"896685383745",appId:"1:896685383745:web:095308dd85580f291c26c0"});
+    }
+    db=firebase.firestore();
+  }
+}catch(e){
+  console.warn('Firebase indisponible :',e);
+  db=null;
+}
 var interventions=[],alarmesFassi=[],alarmesHiab=[],currentPhotos=[],recognition=null,activeField=null;
 var currentVGPType=null,uvgpSigCanvas=null,uvgpSigCtx=null,uvgpSigDrawing=false;
 
@@ -626,8 +721,8 @@ var COMPTES=[
   {user:'atelier',pass:'a7hydro26140!',nom:'Atelier',choix:true},
   {user:'alex',pass:'a7hydro26140!',nom:'Alex',choix:false},
   {user:'cyril',pass:'a7hydro26140!',nom:'Cyril',choix:false},
-  {user:'baptiste',pass:'a7hydro26140!',nom:'Baptiste',choix:false},
-  {user:'dorian',pass:'a7hydro26140!',nom:'Dorian',choix:false},
+  {user:'baptiste',pass:'a7hydro26140!',nom:'Baptiste',choix:false,editeur:true},
+  {user:'dorian',pass:'a7hydro26140!',nom:'Dorian',choix:false,editeur:true},
   {user:'aurelien',pass:'a7hydro26140!',nom:'Aurélien',choix:false},
   {user:'jeremy',pass:'a7hydro26140!',nom:'Jérémy',choix:false},
   {user:'zizi',pass:'a7hydro26140!',nom:'Zizi',choix:false},
@@ -635,6 +730,8 @@ var COMPTES=[
 ];
 var TECHNICIENS=['Alex','Cyril','Baptiste','Dorian','Aurélien','Jérémy','Zizi','Thierry'];
 var currentUser=null;
+var editorMode=false;
+var editorOriginals={};
 
 function doLogin(){
   var u=document.getElementById('login-user').value.trim().toLowerCase();
@@ -647,19 +744,43 @@ function doLogin(){
     setTimeout(function(){err.style.display='none';},3000);
     return;
   }
-  localStorage.setItem('a7_session',JSON.stringify({user:compte.user,nom:compte.nom,choix:compte.choix}));
+  localStorage.setItem('a7_session',JSON.stringify({user:compte.user,nom:compte.nom,choix:compte.choix,editeur:!!compte.editeur}));
   lancerApp(compte);
 }
-function doLogout(){if(!confirm('Se déconnecter ?'))return;localStorage.removeItem('a7_session');location.reload();}
+function doLogout(){
+  localStorage.removeItem('a7_session');
+  currentUser=null;
+  editorMode=false;
+  document.body.classList.remove('editor-mode');
+  var app=document.getElementById('app');
+  var login=document.getElementById('login-screen');
+  if(app)app.style.display='none';
+  if(login)login.style.display='flex';
+  var user=document.getElementById('login-user');
+  var pass=document.getElementById('login-pass');
+  if(user)user.value='';
+  if(pass)pass.value='';
+  var eb=document.getElementById('editor-toggle');
+  if(eb)eb.remove();
+  var err=document.getElementById('login-error');
+  if(err)err.style.display='none';
+  if(user)user.focus();
+}
 
 function lancerApp(compte){
   currentUser=compte;
   document.getElementById('login-screen').style.display='none';
   var app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='column';
   document.getElementById('header-user').textContent='👤 '+compte.nom;
+  if(compte.editeur){
+    var eb=document.createElement('button'); eb.id='editor-toggle'; eb.className='btn btn-info btn-sm'; eb.textContent='✏️ Mode éditeur'; eb.onclick=toggleEditorMode;
+    var logout=document.querySelector('button[onclick="doLogout()"]'); if(logout&&logout.parentNode)logout.parentNode.insertBefore(eb,logout);
+    var saved=localStorage.getItem('a7_editor_content'); if(saved){try{restoreEditorContent(JSON.parse(saved));}catch(e){console.warn('Contenu éditeur non restauré',e);}}
+  }
   var d=new Date();
   var el=document.getElementById('dateDisplay');if(el)el.textContent=d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'long',year:'numeric'});
   var di=document.getElementById('int-date');if(di)di.value=d.toISOString().split('T')[0];
+  var cd=document.getElementById('confidentialite-date');if(cd)cd.textContent=d.toLocaleDateString('fr-FR');
   var wrap=document.getElementById('int-tech-wrap');
   if(wrap){
     if(compte.choix){
@@ -681,6 +802,16 @@ function lancerApp(compte){
 
 // FIREBASE LISTENERS
 function startListeners(){
+  // La connexion à l'application ne doit jamais dépendre de Firebase.
+  if(!db){
+    var loader=document.getElementById('fb-loading');
+    if(loader)loader.style.display='none';
+    renderDashboard();
+    renderHistorique();
+    renderAlarmes('fassi');
+    renderAlarmes('hiab');
+    return;
+  }
   document.getElementById('fb-loading').style.display='flex';
   db.collection('interventions').orderBy('id','desc').onSnapshot(function(snap){
     interventions=snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});});
@@ -689,6 +820,38 @@ function startListeners(){
   },function(){document.getElementById('fb-loading').style.display='none';});
   db.collection('alarmes_fassi').orderBy('id','desc').onSnapshot(function(snap){alarmesFassi=snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});});renderAlarmes('fassi');});
   db.collection('alarmes_hiab').orderBy('id','desc').onSnapshot(function(snap){alarmesHiab=snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});});renderAlarmes('hiab');});
+}
+
+
+
+// MODE EDITEUR — réservé à Baptiste et Dorian
+function toggleEditorMode(){
+  if(!currentUser||!currentUser.editeur)return;
+  editorMode=!editorMode;
+  document.body.classList.toggle('editor-mode',editorMode);
+  document.querySelectorAll('#app .panel').forEach(function(panel){
+    panel.querySelectorAll('h1,h2,h3,h4,p,li,td,th,div:not(.tab):not(.panel):not(.card):not(.grid2):not(.stat-grid):not(.table-wrap):not(.section-header):not(.section-title):not(.card-title):not(.alarm-grid):not(.piece-row):not(.search-wrap)').forEach(function(el){
+      if(el.closest('button')||el.closest('label')||el.querySelector('input,textarea,select,button,canvas'))return;
+      el.contentEditable=editorMode?'true':'false';
+      if(editorMode){el.style.outline='1px dashed rgba(245,194,0,.45)';el.style.outlineOffset='3px';}
+      else {el.style.outline='';el.style.outlineOffset='';}
+    });
+  });
+  var b=document.getElementById('editor-toggle');
+  if(b)b.textContent=editorMode?'💾 Sauvegarder les modifications':'✏️ Mode éditeur';
+  if(!editorMode)saveEditorContent();
+}
+function saveEditorContent(){
+  if(!currentUser||!currentUser.editeur)return;
+  var data={};
+  document.querySelectorAll('#app .panel').forEach(function(panel){
+    data[panel.id]=panel.innerHTML;
+  });
+  localStorage.setItem('a7_editor_content',JSON.stringify(data));
+  notify('Modifications éditeur sauvegardées sur cet appareil');
+}
+function restoreEditorContent(data){
+  Object.keys(data||{}).forEach(function(id){var el=document.getElementById(id);if(el&&typeof data[id]==='string')el.innerHTML=data[id];});
 }
 
 // TABS
@@ -708,6 +871,113 @@ function showTab(name){
 // PIECES
 function addPiece(){var list=document.getElementById('pieces-list');var div=document.createElement('div');div.className='piece-row';div.innerHTML='<div style="flex:2"><label>Référence</label><input type="text" class="p-ref" placeholder="Réf ou nom"></div><div class="qty"><label>Qté</label><input type="number" class="p-qty" value="1" min="1"></div><div style="padding-bottom:14px"><button class="btn btn-secondary btn-sm" onclick="removePiece(this)">✕</button></div>';list.appendChild(div);}
 function removePiece(btn){if(document.querySelectorAll('#pieces-list .piece-row').length>1)btn.closest('.piece-row').remove();}
+
+// SCAN IA D'UNE FICHE PAPIER
+function handleScanFiche(event){
+  var file=event.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var dataUrl=e.target.result;
+    var base64=dataUrl.split(',')[1];
+    var mediaType=file.type||'image/jpeg';
+    var prev=document.getElementById('scan-preview');
+    if(prev)prev.innerHTML='<img src="'+dataUrl+'" style="max-width:220px;border-radius:8px;border:1px solid var(--border);">';
+    var statusEl=document.getElementById('scan-status');
+    if(statusEl){statusEl.style.display='block';statusEl.style.color='var(--accent)';statusEl.textContent='⏳ Analyse en cours par l\'IA...';}
+    analyzeFicheIA(base64,mediaType,dataUrl);
+  };
+  reader.readAsDataURL(file);
+  event.target.value='';
+}
+
+function analyzeFicheIA(base64,mediaType,dataUrl){
+  var prompt='Tu es un assistant qui lit une fiche d\'intervention de maintenance (manuscrite ou imprimée) pour du matériel de manutention (grue FASSI/HIAB, hayon, chariot élévateur...). '+
+  'Analyse la photo ci-jointe et extrait les informations sous forme de JSON STRICT UNIQUEMENT, sans texte avant ni après, sans balises markdown ```. '+
+  'Format exact attendu (respecte les clés) :\n'+
+  '{"entreprise":"","machine":"","tech":"","date":"AAAA-MM-JJ","duree":"","statut":"Terminée","type":"Corrective","symptomes":"","cause":"","solution":"","obs":"","pieces":[{"ref":"","designation":"","qty":1}]}\n'+
+  'Règles : si une information est illisible ou absente, laisse une chaîne vide "" (tableau vide pour pieces si aucune pièce visible). '+
+  'Pour "duree", indique un nombre d\'heures si présent (ex "2.5"). Pour "statut" choisis parmi "Terminée","En cours","En attente de pièces". Pour "type" choisis parmi "Corrective","Préventive","Améliorative". '+
+  'Pour chaque pièce, "ref" est la référence/numéro de pièce si visible (sinon vide), "designation" est le nom de la pièce, "qty" est la quantité (nombre entier, 1 par défaut). Ne retourne QUE le JSON, rien d\'autre.';
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-iab':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:base64}},{type:'text',text:prompt}]}]})})
+  .then(function(res){return res.json();})
+  .then(function(data){
+    var statusEl=document.getElementById('scan-status');
+    if(data.error){if(statusEl){statusEl.style.color='var(--danger)';statusEl.textContent='❌ Erreur IA : '+data.error.message;}return;}
+    var text=(data.content&&data.content[0]&&data.content[0].text)||'';
+    var clean=text.replace(/```json/g,'').replace(/```/g,'').trim();
+    var parsed;
+    try{parsed=JSON.parse(clean);}catch(e){if(statusEl){statusEl.style.color='var(--danger)';statusEl.textContent='❌ Fiche illisible par l\'IA, merci de compléter manuellement.';}return;}
+    applyScanToForm(parsed,dataUrl);
+    if(statusEl){statusEl.style.color='var(--success)';statusEl.textContent='✅ Fiche analysée ! Vérifiez et corrigez les champs si besoin avant d\'enregistrer.';setTimeout(function(){statusEl.style.display='none';},6000);}
+  }).catch(function(){var statusEl=document.getElementById('scan-status');if(statusEl){statusEl.style.color='var(--danger)';statusEl.textContent='❌ Erreur de connexion à l\'IA.';}});
+}
+
+function applyScanToForm(d,dataUrl){
+  function setIfEmpty(id,val){if(val===undefined||val===null||val==='')return;var el=document.getElementById(id);if(el&&!el.value)el.value=val;}
+  setIfEmpty('int-entreprise',d.entreprise);
+  setIfEmpty('int-machine',d.machine);
+  var techEl=document.getElementById('int-tech');
+  if(techEl&&d.tech){
+    if(techEl.tagName==='SELECT'){
+      var opt=Array.prototype.slice.call(techEl.options).find(function(o){return o.value.toLowerCase()===String(d.tech).toLowerCase();});
+      if(opt)techEl.value=opt.value;
+    } else if(!techEl.value){
+      techEl.value=d.tech;
+    }
+  }
+  if(d.date&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))setIfEmpty('int-date',d.date);
+  setIfEmpty('int-duree',d.duree);
+  setIfEmpty('int-symptomes',d.symptomes);
+  setIfEmpty('int-cause',d.cause);
+  setIfEmpty('int-solution',d.solution);
+  setIfEmpty('int-obs',d.obs);
+  if(d.statut){var se=document.getElementById('int-statut');if(se)se.value=d.statut;}
+  if(d.type){var te=document.getElementById('int-type');if(te)te.value=d.type;}
+
+  if(d.pieces&&d.pieces.length){
+    var list=document.getElementById('pieces-list');
+    var rows=list.querySelectorAll('.piece-row');
+    var firstRowEmpty=rows.length>0&&!rows[0].querySelector('.p-ref').value.trim();
+    if(!firstRowEmpty)list.innerHTML='';
+    d.pieces.forEach(function(p,idx){
+      var row;
+      var rowsNow=list.querySelectorAll('.piece-row');
+      if(idx===0&&firstRowEmpty){row=rowsNow[0];}
+      else{
+        row=document.createElement('div');row.className='piece-row';
+        row.innerHTML='<div style="flex:2"><label>Référence / Désignation</label><input type="text" class="p-ref" placeholder="Réf ou nom"></div><div class="qty"><label>Qté</label><input type="number" class="p-qty" value="1" min="1"></div><div style="padding-bottom:14px"><button class="btn btn-secondary btn-sm" onclick="removePiece(this)">✕</button></div>';
+        list.appendChild(row);
+      }
+      var label=(p.ref&&String(p.ref).trim())?p.ref:(p.designation||'');
+      row.querySelector('.p-ref').value=label;
+      row.querySelector('.p-qty').value=p.qty||1;
+    });
+    syncPiecesToKnowledgeBase(d.pieces);
+  }
+
+  if(dataUrl){currentPhotos.push(dataUrl);renderPhotoPreview();}
+}
+
+function syncPiecesToKnowledgeBase(pieces){
+  db.collection('references_pieces').get().then(function(snap){
+    var existing=snap.docs.map(function(d){return(d.data().code||'').toLowerCase().trim();});
+    pieces.forEach(function(p){
+      var ref=((p.ref&&String(p.ref).trim())||(p.designation&&String(p.designation).trim())||'');
+      if(!ref)return;
+      if(existing.indexOf(ref.toLowerCase())===-1){
+        db.collection('references_pieces').add({
+          code:ref,
+          nom:p.designation||ref,
+          cat:'Autre',
+          machines:'',
+          notes:'Ajoutée automatiquement via scan IA d\'une fiche papier le '+new Date().toLocaleDateString('fr-FR'),
+          createdAt:new Date().toISOString().split('T')[0]
+        });
+        existing.push(ref.toLowerCase());
+      }
+    });
+  }).catch(function(){});
+}
 
 // SAVE / EDIT INTERVENTION
 function canEdit(intervention){
@@ -797,6 +1067,7 @@ function resetForm(){
   document.getElementById('int-statut').value='Terminée';
   document.getElementById('pieces-list').innerHTML='<div class="piece-row"><div style="flex:2"><label>Référence</label><input type="text" class="p-ref" placeholder="Réf ou nom"></div><div class="qty"><label>Qté</label><input type="number" class="p-qty" value="1" min="1"></div><div style="padding-bottom:14px"><button class="btn btn-secondary btn-sm" onclick="removePiece(this)">✕</button></div></div>';
   var pp=document.getElementById('photo-preview');if(pp)pp.innerHTML='';
+  var sp=document.getElementById('scan-preview');if(sp)sp.innerHTML='';
   currentPhotos=[];
   var di=document.getElementById('int-date');if(di)di.value=new Date().toISOString().split('T')[0];
 }
