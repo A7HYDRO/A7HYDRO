@@ -1193,13 +1193,15 @@ function saveIntervention(){
   if(editId){
     if(db){
       db.collection('interventions').doc(editId).update(data).then(function(){
-        notify('Intervention modifiée !');
+        feedKnowledgeBaseFromIntervention(data,editId);
+        notify('Intervention modifiée et base de connaissances mise à jour !');
         document.getElementById('int-edit-id').value='';
         var banner=document.getElementById('edit-banner');if(banner)banner.style.display='none';
         currentPhotos=[];resetForm();showTab('historique');
       }).catch(function(e){
         console.error('Échec d\'écriture Firestore, mise en attente locale :',e);
         queueOfflineAction({action:'update',collection:'interventions',docId:editId,data:data});
+        feedKnowledgeBaseFromIntervention(data,editId);
         var idx=interventions.findIndex(function(x){return x._fbId===editId;});
         if(idx>-1)interventions[idx]=Object.assign({},interventions[idx],data,{_pendingSync:true});
         alert('⚠️ Enregistrement en ligne refusé ('+e.message+'). Rien n\'est perdu : la modification est mise de côté et sera envoyée dès que le problème sera résolu (voir l\'icône en haut de l\'écran).');
@@ -1209,6 +1211,7 @@ function saveIntervention(){
       });
     } else {
       queueOfflineAction({action:'update',collection:'interventions',docId:editId,data:data});
+      feedKnowledgeBaseFromIntervention(data,editId);
       var idx=interventions.findIndex(function(x){return x._fbId===editId;});
       if(idx>-1)interventions[idx]=Object.assign({},interventions[idx],data,{_pendingSync:true});
       notify('📵 Modification enregistrée hors-ligne, sera synchronisée');
@@ -1219,12 +1222,14 @@ function saveIntervention(){
   } else {
     data.id=Date.now();
     if(db){
-      db.collection('interventions').add(data).then(function(){
-        notify('Intervention enregistrée !');currentPhotos=[];resetForm();showTab('historique');
+      db.collection('interventions').add(data).then(function(doc){
+        feedKnowledgeBaseFromIntervention(data,doc.id);
+        notify('Intervention enregistrée et base de connaissances mise à jour !');currentPhotos=[];resetForm();showTab('historique');
       }).catch(function(e){
         console.error('Échec d\'écriture Firestore, mise en attente locale :',e);
         var localId2='local_'+data.id;
         queueOfflineAction({action:'add',collection:'interventions',data:data});
+        feedKnowledgeBaseFromIntervention(data,localId2);
         interventions.unshift(Object.assign({},data,{_fbId:localId2,_pendingSync:true}));
         alert('⚠️ Enregistrement en ligne refusé ('+e.message+'). Rien n\'est perdu : l\'intervention est mise de côté et sera envoyée dès que le problème sera résolu (voir l\'icône en haut de l\'écran).');
         currentPhotos=[];resetForm();showTab('historique');renderHistorique();renderDashboard();
@@ -1232,6 +1237,7 @@ function saveIntervention(){
     } else {
       var localId='local_'+data.id;
       queueOfflineAction({action:'add',collection:'interventions',data:data});
+      feedKnowledgeBaseFromIntervention(data,localId);
       interventions.unshift(Object.assign({},data,{_fbId:localId,_pendingSync:true}));
       notify('📵 Intervention enregistrée hors-ligne, sera synchronisée dès que possible');
       currentPhotos=[];resetForm();showTab('historique');renderHistorique();renderDashboard();
@@ -1451,13 +1457,47 @@ function startVoice(fieldId,btnId){
   recognition.start();
 }
 
+// MÉTÉO / GÉOLOCALISATION
+var weatherState={lat:null,lon:null};
+function weatherIcon(code){code=Number(code);if(code===0)return'☀️';if(code<=3)return'🌤️';if(code<=48)return'🌫️';if(code<=67)return'🌧️';if(code<=77)return'🌨️';if(code<=82)return'🌦️';if(code<=86)return'❄️';if(code<=99)return'⛈️';return'🌤️';}
+function refreshWeather(){
+  var el=document.getElementById('weather-text');if(!navigator.geolocation){if(el)el.textContent='🌡️ Météo indisponible';return;}
+  if(el)el.textContent='📍 Localisation…';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    weatherState.lat=pos.coords.latitude;weatherState.lon=pos.coords.longitude;
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(weatherState.lat)+'&longitude='+encodeURIComponent(weatherState.lon)+'&current=temperature_2m,weather_code&timezone=auto')
+      .then(function(r){if(!r.ok)throw new Error('weather');return r.json();})
+      .then(function(d){var c=d.current||{};if(el)el.textContent=weatherIcon(c.weather_code)+' '+Math.round(Number(c.temperature_2m))+'°C';try{localStorage.setItem('a7hydro_weather',JSON.stringify({temp:c.temperature_2m,code:c.weather_code,at:Date.now()}));}catch(e){}})
+      .catch(function(){try{var c=JSON.parse(localStorage.getItem('a7hydro_weather')||'null');if(c&&el){el.textContent=weatherIcon(c.code)+' '+Math.round(Number(c.temp))+'°C';return;}}catch(e){}if(el)el.textContent='🌤️ Météo indisponible';});
+  },function(){try{var c=JSON.parse(localStorage.getItem('a7hydro_weather')||'null');if(c&&el){el.textContent=weatherIcon(c.code)+' '+Math.round(Number(c.temp))+'°C';return;}}catch(e){}if(el)el.textContent='📍 Autoriser la localisation';},{enableHighAccuracy:false,timeout:10000,maximumAge:900000});
+}
+
+// APPRENTISSAGE AUTOMATIQUE DE LA BASE DE CONNAISSANCES
+function normalizeKBText(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');}
+function collectKnowledgeCandidates(data){
+  var out=[];function add(type,text,extra){text=String(text||'').trim();if(!text)return;out.push(Object.assign({type:type,text:text,key:normalizeKBText(type+' '+text)},extra||{}));}
+  (data.pieces||[]).forEach(function(p){add('piece',p.ref||p.designation,{quantity:p.qty||1});});
+  add('panne',data.symptomes);add('panne',data.cause);add('solution',data.solution);add('observation',data.obs);
+  var all=[data.symptomes,data.cause,data.solution,data.obs].filter(Boolean).join(' ');var patterns=[/\b(?:alarme|alarm|erreur|code erreur|fault|defaut|défaut)\s*(?:fassi|hiab)?\s*(?:code\s*)?(?:n[°o]?\s*)?([0-9]{1,4})\b/gi,/\b(?:fassi|hiab)\s*(?:alarme|alarm|erreur|error)\s*([0-9]{1,4})\b/gi,/\b(?:code|error|err)\s*([0-9]{1,4})\b/gi];
+  patterns.forEach(function(re){var m;while((m=re.exec(all))!==null)add('alarme',m[0]);});return out;
+}
+function feedKnowledgeBaseFromIntervention(data,fbId){
+  var candidates=collectKnowledgeCandidates(data);if(!candidates.length)return Promise.resolve();
+  if(!db){try{var local=JSON.parse(localStorage.getItem('a7hydro_kb_auto')||'[]');candidates.forEach(function(c){var x=local.find(function(y){return y.key===c.key;});if(x){x.count=(x.count||1)+1;}else local.push(Object.assign(c,{sourceIntervention:data.id||fbId,createdAt:new Date().toISOString(),count:1}));});localStorage.setItem('a7hydro_kb_auto',JSON.stringify(local));}catch(e){}return Promise.resolve();}
+  return db.collection('knowledge_entries').get().then(function(snap){var existing={};snap.forEach(function(d){var x=d.data();if(x.key)existing[x.key]=Object.assign({},x,{_fbId:d.id});});var writes=[];candidates.forEach(function(c){var ref=fbId||data.id||'';if(existing[c.key]){var ex=existing[c.key],refs=Array.isArray(ex.interventions)?ex.interventions.slice():[];if(ref&&refs.indexOf(ref)===-1)refs.push(ref);writes.push(db.collection('knowledge_entries').doc(ex._fbId).update({interventions:refs,lastSeen:new Date().toISOString(),count:(Number(ex.count)||0)+(ref&&refs.length>1?1:0)}));}else{writes.push(db.collection('knowledge_entries').add({key:c.key,type:c.type,text:c.text,quantity:c.quantity||null,machine:data.machine||'',entreprise:data.entreprise||'',interventions:[ref],count:1,createdAt:new Date().toISOString(),lastSeen:new Date().toISOString()}));}});return Promise.all(writes);}).catch(function(e){console.warn('KB auto:',e);});
+}
+function searchAutoKnowledge(){var q=normalizeKBText((document.getElementById('kb-auto-search')||{value:''}).value),el=document.getElementById('kb-auto-results');if(!el)return;if(!db){renderAutoKnowledge(loadLocalAutoKnowledge().filter(function(x){return!q||normalizeKBText(x.text).includes(q)||normalizeKBText(x.type).includes(q);}),el);return;}db.collection('knowledge_entries').get().then(function(snap){var a=snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});});if(q)a=a.filter(function(x){return normalizeKBText(x.text).includes(q)||normalizeKBText(x.type).includes(q)||normalizeKBText(x.machine).includes(q);});renderAutoKnowledge(a,el);}).catch(function(){renderAutoKnowledge(loadLocalAutoKnowledge(),el);});}
+function loadLocalAutoKnowledge(){try{return JSON.parse(localStorage.getItem('a7hydro_kb_auto')||'[]');}catch(e){return[];}}
+function renderAutoKnowledge(items,el){if(!items.length){el.innerHTML='<div class="empty"><div class="empty-icon">✨</div><p>Aucun élément appris pour le moment.</p></div>';return;}items.sort(function(a,b){return String(b.lastSeen||b.createdAt||'').localeCompare(String(a.lastSeen||a.createdAt||''));});el.innerHTML=items.slice(0,100).map(function(x){var icon=x.type==='piece'?'📦':x.type==='alarme'?'🚨':x.type==='panne'?'🔧':'📝';return '<div class="card" style="margin-bottom:10px;padding:13px 15px;"><div style="display:flex;justify-content:space-between;gap:10px;"><div><span class="tag">'+icon+' '+x.type+'</span> <strong>'+x.text+'</strong></div><span style="font-size:11px;color:var(--text3);">×'+(x.count||1)+'</span></div>'+(x.machine?'<div style="font-size:11px;color:var(--text2);margin-top:5px;">🔧 '+x.machine+(x.entreprise?' · 🏢 '+x.entreprise:'')+'</div>':'')+'</div>';}).join('');}
+
 // BASE DE CONNAISSANCES
 function switchKB(tab){
-  ['interventions','entreprises','references'].forEach(function(t){
+  ['interventions','entreprises','references','auto'].forEach(function(t){
     var s=document.getElementById('kb-section-'+t);if(s)s.style.display=t===tab?'block':'none';
     var btn=document.getElementById('kb-tab-'+t);if(btn)btn.className=t===tab?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
   });
   if(tab==='references')searchReferences();
+  if(tab==='auto')searchAutoKnowledge();
 }
 function searchKnowledgeBase(){
   var q=document.getElementById('kb-search').value.toLowerCase().trim();
@@ -1923,5 +1963,5 @@ function formatDate(d){if(!d)return'—';var p=d.split('-');return p[2]+'/'+p[1]
 function notify(msg){var el=document.getElementById('notif');el.textContent='✓ '+msg;el.style.display='block';setTimeout(function(){el.style.display='none';},2500);}
 
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){renderFassiPhotos();renderAlarmes('fassi');});</script></body>
+<script>document.addEventListener('DOMContentLoaded',function(){renderFassiPhotos();renderAlarmes('fassi');refreshWeather();setInterval(refreshWeather,30*60*1000);});</script></body>
 </html>
