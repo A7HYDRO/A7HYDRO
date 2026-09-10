@@ -653,7 +653,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
         <tbody>
           <tr><td class="mono">a7_session</td><td>Maintien de la connexion (rester connecté)</td><td>Jusqu'à déconnexion manuelle</td></tr>
           <tr><td class="mono">vgp_notifs_ignored</td><td>Mémoriser les alertes VGP déjà traitées</td><td>Persistant (effaçable via "Tout effacer")</td></tr>
-          <tr><td class="mono">a7_editor_content</td><td>Sauvegarde locale du mode éditeur (comptes autorisés)</td><td>Jusqu'à modification suivante</td></tr>
+          <tr><td class="mono">a7_editor_content</td><td>Copie de secours du mode éditeur (la version commune est dans Firestore)</td><td>Jusqu'à modification suivante</td></tr>
           <tr><td class="mono">a7_offline_queue</td><td>File d'attente des saisies faites hors-ligne, en attente de synchronisation</td><td>Jusqu'à synchronisation réussie</td></tr>
           <tr><td class="mono">a7_cookie_consent</td><td>Mémoriser que le bandeau d'information a été lu</td><td>Persistant</td></tr>
         </tbody>
@@ -919,7 +919,9 @@ function lancerApp(compte){
   if(compte.editeur){
     var eb=document.createElement('button'); eb.id='editor-toggle'; eb.className='btn btn-info btn-sm'; eb.textContent='✏️ Mode éditeur'; eb.onclick=toggleEditorMode;
     var logout=document.querySelector('button[onclick="doLogout()"]'); if(logout&&logout.parentNode)logout.parentNode.insertBefore(eb,logout);
-    var saved=localStorage.getItem('a7_editor_content'); if(saved){try{restoreEditorContent(JSON.parse(saved));}catch(e){console.warn('Contenu éditeur non restauré',e);}}
+    // Le contenu éditeur est désormais partagé via Firestore.
+    // En mode hors-ligne, on utilise seulement la dernière copie locale.
+    if(!db){var saved=localStorage.getItem('a7_editor_content'); if(saved){try{restoreEditorContent(JSON.parse(saved));}catch(e){console.warn('Contenu éditeur local non restauré',e);}}}
   }
   var d=new Date();
   var el=document.getElementById('dateDisplay');if(el)el.textContent=d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'long',year:'numeric'});
@@ -999,6 +1001,15 @@ function startListeners(){
   db.collection('alarmes_fassi').orderBy('id','desc').onSnapshot(function(snap){alarmesFassi=mergeAlarmLists(snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});}));setFassiModel(fassiSelectedModel);renderFassiPhotos();},function(err){console.error('Erreur Firestore (alarmes_fassi) :',err);alarmesFassi=mergeAlarmLists([]);
 alarmesHiab=mergeHiabAlarmLists([]);setFassiModel(fassiSelectedModel);renderFassiPhotos();});
   db.collection('alarmes_hiab').orderBy('id','desc').onSnapshot(function(snap){alarmesHiab=mergeHiabAlarmLists(snap.docs.map(function(d){return Object.assign({},d.data(),{_fbId:d.id});}));renderAlarmes('hiab');},function(err){console.error('Erreur Firestore (alarmes_hiab) :',err);});
+  // CONTENU ÉDITEUR PARTAGÉ : une seule version commune à tous les utilisateurs.
+  db.collection('app_config').doc('editor_content').onSnapshot(function(snap){
+    if(snap.exists && snap.data() && snap.data().panels){
+      restoreEditorContent(snap.data().panels);
+      try{localStorage.setItem('a7_editor_content',JSON.stringify(snap.data().panels));}catch(e){}
+      var d=document.getElementById('confidentialite-date');
+      if(d && snap.data().updatedAt){try{d.textContent=new Date(snap.data().updatedAt).toLocaleDateString('fr-FR');}catch(e){}}
+    }
+  },function(err){console.error('Erreur Firestore (contenu éditeur) :',err);});
 }
 
 
@@ -1026,8 +1037,22 @@ function saveEditorContent(){
   document.querySelectorAll('#app .panel').forEach(function(panel){
     data[panel.id]=panel.innerHTML;
   });
-  localStorage.setItem('a7_editor_content',JSON.stringify(data));
-  notify('Modifications éditeur sauvegardées sur cet appareil');
+  // Copie locale de secours pour le hors-ligne.
+  try{localStorage.setItem('a7_editor_content',JSON.stringify(data));}catch(e){}
+  if(db){
+    db.collection('app_config').doc('editor_content').set({
+      panels:data,
+      updatedAt:new Date().toISOString(),
+      updatedBy:currentUser.nom||currentUser.user||'Editeur'
+    },{merge:true}).then(function(){
+      notify('☁️ Modifications éditeur enregistrées et partagées avec tous les utilisateurs');
+    }).catch(function(err){
+      console.error('Échec sauvegarde contenu éditeur Firestore :',err);
+      notify('⚠️ Sauvegarde locale effectuée ; partage en ligne impossible pour le moment');
+    });
+  }else{
+    notify('📵 Modifications éditeur sauvegardées hors-ligne ; elles seront partagées au retour de la connexion');
+  }
 }
 function restoreEditorContent(data){
   Object.keys(data||{}).forEach(function(id){var el=document.getElementById(id);if(el&&typeof data[id]==='string')el.innerHTML=data[id];});
